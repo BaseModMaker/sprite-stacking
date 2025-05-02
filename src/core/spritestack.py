@@ -1,20 +1,9 @@
 import pygame
 from pygame import Surface, transform, draw, Rect, SRCALPHA
-from os.path import join, exists, basename, dirname
+from os.path import join, exists
+from PIL import Image
 import os
 import sys
-import platform
-
-# Conditionally import PIL only on desktop platforms
-# This prevents errors on web deployment as PIL might not be fully supported
-if platform.system() != "Emscripten":
-    try:
-        from PIL import Image
-    except ImportError:
-        print("PIL not available, using fallback image loading")
-        Image = None
-else:
-    Image = None
 
 class SpriteStack:
     """
@@ -22,7 +11,7 @@ class SpriteStack:
     This can be used by any game object that needs sprite stacking visualization.
     """
     
-    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32, preloaded_image=None):
+    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32):
         """Initialize a sprite stack.
         
         Args:
@@ -31,7 +20,6 @@ class SpriteStack:
             layer_offset (int): Vertical pixels between each layer
             default_width (int): Default width if no image is provided
             default_height (int): Default height if no image is provided
-            preloaded_image: A preloaded pygame surface to use instead of loading from path
         """
         self.num_layers = num_layers
         self.layer_offset = layer_offset
@@ -39,37 +27,17 @@ class SpriteStack:
         self.default_height = default_height
         self.layers = []
         
-        # If we have a preloaded image, use that instead of loading from path
-        if preloaded_image is not None:
-            print("Using preloaded image for sprite stack")
-            self.layers = self._create_web_compatible_layers_from_surface(preloaded_image)
-            if self.layers:
-                print(f"Successfully created {len(self.layers)} layers from preloaded image")
         # Try to load layers from the provided image path
-        elif image_path:
-            print(f"Loading sprite stack from path: {image_path}")
-            
-            # In web environment, check if we need to adjust the path
-            if platform.system() == "Emscripten":
-                # For web, try several path variations
-                self._try_multiple_paths(image_path)
-            else:
-                # For desktop, just try the original path
-                if exists(image_path):
-                    # Try different loading methods depending on platform
-                    if platform.system() == "Emscripten" or Image is None:
-                        self.layers = self._create_web_compatible_layers(image_path)
-                    else:
-                        self.layers = self._create_layers_from_image(image_path)
-                else:
-                    # If file doesn't exist, try to load from separate files
-                    print(f"Image path not found: {image_path}, trying to extract from folder")
-                    img_folder = dirname(image_path)  # Extract folder path
-                    self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
+        if image_path and exists(image_path):
+            self.layers = self._create_layers_from_image(image_path)
+        else:
+            # If no path provided or file doesn't exist, try to load from separate files
+            if image_path:
+                img_folder = os.path.dirname(image_path)  # Extract folder path
+                self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
         
         # If still no layers, create default ones
         if not self.layers:
-            print("Creating default sprite stack layers")
             self._create_default_layers()
         
         # Set dimensions based on the first layer
@@ -79,151 +47,9 @@ class SpriteStack:
         # Shadow properties
         self.shadow_offset_x = 15  # Default shadow offset from position
         self.shadow_offset_y = 15  # Default shadow offset from position
-    
-    def _create_web_compatible_layers_from_surface(self, full_img):
-        """Create layers from an already loaded pygame surface.
-        
-        Args:
-            full_img: A pygame surface containing the full sprite image
-            
-        Returns:
-            list: List of pygame surfaces for each layer
-        """
-        try:
-            print(f"Creating layers from preloaded surface: {full_img.get_width()}x{full_img.get_height()}")
-            img_width = full_img.get_width()
-            img_height = full_img.get_height()
-            layer_height = img_height // self.num_layers
-            
-            print(f"Image dimensions: {img_width}x{img_height}, layer height: {layer_height}")
-            
-            layers = []
-            # Create layers by copying sections of the original image
-            for i in range(self.num_layers):
-                # Calculate the subsurface area for this layer
-                y_start = img_height - (i + 1) * layer_height
-                
-                if y_start < 0 or y_start >= img_height or y_start + layer_height > img_height:
-                    print(f"Warning: Layer {i} y_start={y_start} is out of bounds")
-                    continue
-                
-                # Create a subsurface (slice) of the image
-                try:
-                    print(f"Creating subsurface for layer {i} from y={y_start}")
-                    layer = full_img.subsurface((0, y_start, img_width, layer_height))
-                    layers.append(layer)
-                except ValueError as e:
-                    print(f"Error creating subsurface: {e}")
-                    # If subsurface fails, try creating a new surface and copy the pixels
-                    layer = Surface((img_width, layer_height), SRCALPHA)
-                    rect = Rect(0, y_start, img_width, layer_height)
-                    layer.blit(full_img, (0, 0), rect)
-                    layers.append(layer)
-            
-            print(f"Created {len(layers)} layers successfully from surface")
-            return layers
-        except Exception as e:
-            print(f"Error in layer creation from surface: {e}")
-            return []
-            
-    def _try_multiple_paths(self, original_path):
-        """Try loading from multiple path variations for web environment.
-        
-        Args:
-            original_path (str): The original image path
-        """
-        # List of path variations to try
-        possible_paths = [
-            original_path,  # Original path
-            original_path.replace('\\', '/'),  # With forward slashes
-            # Extract filename and try in various locations
-            basename(original_path),  # Just the filename
-            f"assets/images/{basename(original_path)}",  # In assets/images folder
-        ]
-        
-        # If it contains 'assets', try to reconstruct a web-friendly path
-        if 'assets' in original_path:
-            parts = original_path.replace('\\', '/').split('/')
-            if 'assets' in parts:
-                idx = parts.index('assets')
-                web_path = '/'.join(parts[idx:])
-                possible_paths.append(web_path)
-        
-        # Print for debugging
-        print(f"Trying these paths in web environment: {possible_paths}")
-        
-        # Try each path
-        for path in possible_paths:
-            print(f"Trying path: {path}")
-            try:
-                # Use the web-compatible method for Emscripten
-                layers = self._create_web_compatible_layers(path)
-                if layers:
-                    print(f"Successfully loaded image from path: {path}")
-                    self.layers = layers
-                    return
-            except Exception as e:
-                print(f"Failed to load from {path}: {e}")
-        
-        # If we got here, none of the paths worked
-        print("All path variations failed to load")
-            
-    def _create_web_compatible_layers(self, img_path):
-        """Create layers using pure pygame methods for web compatibility.
-        
-        Args:
-            img_path (str): Path to the image file
-            
-        Returns:
-            list: List of pygame surfaces for each layer
-        """
-        try:
-            # Load the image using pygame
-            print(f"Loading image with pygame from: {img_path}")
-            full_img = pygame.image.load(img_path)
-            # Convert with alpha if possible
-            try:
-                full_img = full_img.convert_alpha()
-            except Exception as e:
-                print(f"Warning: Could not convert with alpha: {e}")
-                try:
-                    full_img = full_img.convert()
-                except Exception as e2:
-                    print(f"Warning: Could not convert: {e2}")
-            
-            img_width = full_img.get_width()
-            img_height = full_img.get_height()
-            layer_height = img_height // self.num_layers
-            
-            print(f"Image dimensions: {img_width}x{img_height}, layer height: {layer_height}")
-            
-            layers = []
-            # Create layers by copying sections of the original image
-            for i in range(self.num_layers):
-                # Calculate the subsurface area for this layer
-                y_start = img_height - (i + 1) * layer_height
-                
-                # Create a subsurface (slice) of the image
-                try:
-                    print(f"Creating subsurface for layer {i} from y={y_start}")
-                    layer = full_img.subsurface((0, y_start, img_width, layer_height))
-                    layers.append(layer)
-                except ValueError as e:
-                    print(f"Error creating subsurface: {e}")
-                    # If subsurface fails, try creating a new surface and copy the pixels
-                    layer = Surface((img_width, layer_height), SRCALPHA)
-                    rect = Rect(0, y_start, img_width, layer_height)
-                    layer.blit(full_img, (0, 0), rect)
-                    layers.append(layer)
-            
-            print(f"Created {len(layers)} layers successfully")
-            return layers
-        except Exception as e:
-            print(f"Error in web-compatible layer creation: {e}")
-            return []
             
     def _create_layers_from_image(self, img_path):
-        """Create sprite stacking layers from a single image using PIL.
+        """Create sprite stacking layers from a single image.
         
         Args:
             img_path (str): Path to the image file
@@ -232,33 +58,55 @@ class SpriteStack:
             list: List of pygame surfaces for each layer
         """
         try:
-            # Open the full image file
-            pil_img = Image.open(img_path)
-            img_width, img_height = pil_img.size
-            layer_height = img_height // self.num_layers
+            # Web version needs to use pygame directly instead of PIL
+            if hasattr(sys, '_emscripten_info'):
+                # Web approach: Load the image with pygame and split it manually
+                full_img = pygame.image.load(img_path).convert_alpha()
+                img_width = full_img.get_width()
+                img_height = full_img.get_height()
+                layer_height = img_height // self.num_layers
+                
+                layers = []
+                # Split the image into layers
+                for i in range(self.num_layers):
+                    # Calculate the slice area for this layer
+                    y_start = img_height - (i + 1) * layer_height
+                    
+                    # Create a subsurface for this layer
+                    layer_surface = pygame.Surface((img_width, layer_height), SRCALPHA)
+                    layer_surface.blit(full_img, (0, 0), 
+                                     (0, y_start, img_width, layer_height))
+                    layers.append(layer_surface)
+                
+                return layers
+            else:
+                # Desktop approach: Use PIL for better image processing
+                # Open the full image file
+                pil_img = Image.open(img_path)
+                img_width, img_height = pil_img.size
+                layer_height = img_height // self.num_layers
 
-            layers = []
-            # Slice the image into horizontal layers from bottom to top
-            for i in range(self.num_layers):
-                # Calculate the slice area for this layer (left, top, right, bottom)
-                y_start = img_height - (i + 1) * layer_height
-                y_end = img_height - i * layer_height
+                layers = []
+                # Slice the image into horizontal layers from bottom to top
+                for i in range(self.num_layers):
+                    # Calculate the slice area for this layer (left, top, right, bottom)
+                    y_start = img_height - (i + 1) * layer_height
+                    y_end = img_height - i * layer_height
+                    
+                    # Slice the image vertically
+                    layer = pil_img.crop((0, y_start, img_width, y_end))
+                    
+                    # Convert PIL Image to pygame surface
+                    pygame_img_str = layer.tobytes()
+                    pygame_img = pygame.image.fromstring(pygame_img_str, layer.size, layer.mode).convert_alpha()
+                    
+                    # Add to layers
+                    layers.append(pygame_img)
                 
-                # Slice the image vertically
-                layer = pil_img.crop((0, y_start, img_width, y_end))
-                
-                # Convert PIL Image to pygame surface
-                pygame_img_str = layer.tobytes()
-                pygame_img = pygame.image.fromstring(pygame_img_str, layer.size, layer.mode).convert_alpha()
-                
-                # Add to layers
-                layers.append(pygame_img)
-            
-            return layers
+                return layers
         except Exception as e:
-            print(f"Error creating layers from image with PIL: {e}")
-            # Fall back to web-compatible method
-            return self._create_web_compatible_layers(img_path)
+            print(f"Error creating layers from image: {e}")
+            return []
             
     def _extract_layers_from_files(self, img_folder, prefix="layer", num_layers=8):
         """Load separate layer images from files.
@@ -278,9 +126,8 @@ class SpriteStack:
                 try:
                     layer = pygame.image.load(layer_path).convert_alpha()
                     layers.append(layer)
-                    print(f"Loaded layer: {layer_path}")
                 except Exception as e:
-                    print(f"Error loading layer {i}: {e}")
+                    print(f"Error loading layer image: {e}")
             else:
                 print(f"Layer image not found: {layer_path}")
         
@@ -334,21 +181,18 @@ class SpriteStack:
         
         # Draw each layer from bottom to top, with slight offset
         for i, layer in enumerate(self.layers):
-            try:
-                # Rotate the layer
-                rotated_layer = transform.rotate(layer, -rotation)
-                layer_rect = rotated_layer.get_rect()
-                
-                # Calculate position with offset for 3D effect
-                layer_rect.center = (
-                    x,
-                    y - i * self.layer_offset
-                )
-                
-                # Draw this layer
-                surface.blit(rotated_layer, layer_rect)
-            except Exception as e:
-                print(f"Error drawing layer {i}: {e}")
+            # Rotate the layer
+            rotated_layer = transform.rotate(layer, -rotation)
+            layer_rect = rotated_layer.get_rect()
+            
+            # Calculate position with offset for 3D effect
+            layer_rect.center = (
+                x,
+                y - i * self.layer_offset
+            )
+            
+            # Draw this layer
+            surface.blit(rotated_layer, layer_rect)
     
     def _draw_shadow(self, surface, x, y, rotation):
         """Draw a shadow beneath the sprite.
@@ -359,21 +203,18 @@ class SpriteStack:
             y (int): Y position of the object
             rotation (float): Rotation angle in degrees
         """
-        try:
-            # Create a shadow surface
-            shadow_surf = Surface((self.width, self.height//2), pygame.SRCALPHA)
-            shadow_color = (0, 0, 0, 80)  # Semi-transparent black
-            shadow_rect = pygame.Rect(0, 0, self.width * 0.8, self.height//3)
-            shadow_rect.center = (self.width//2, self.height//4)
-            pygame.draw.ellipse(shadow_surf, shadow_color, shadow_rect)
-            
-            # Get the rotated shadow
-            shadow_surf = transform.rotate(shadow_surf, -rotation)
-            shadow_rect = shadow_surf.get_rect()
-            shadow_rect.center = (x + self.shadow_offset_x, y + self.shadow_offset_y)
-            surface.blit(shadow_surf, shadow_rect)
-        except Exception as e:
-            print(f"Error drawing shadow: {e}")
+        # Create a shadow surface
+        shadow_surf = Surface((self.width, self.height//2), pygame.SRCALPHA)
+        shadow_color = (0, 0, 0, 80)  # Semi-transparent black
+        shadow_rect = pygame.Rect(0, 0, self.width * 0.8, self.height//3)
+        shadow_rect.center = (self.width//2, self.height//4)
+        pygame.draw.ellipse(shadow_surf, shadow_color, shadow_rect)
+        
+        # Get the rotated shadow
+        shadow_surf = transform.rotate(shadow_surf, -rotation)
+        shadow_rect = shadow_surf.get_rect()
+        shadow_rect.center = (x + self.shadow_offset_x, y + self.shadow_offset_y)
+        surface.blit(shadow_surf, shadow_rect)
     
     def create_car_layers(self, width, height):
         """Create car-specific layers.

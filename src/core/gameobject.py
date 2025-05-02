@@ -1,13 +1,11 @@
 import pygame
 from pygame import sprite
 from .spritestack import SpriteStack
-import os
-import platform
 
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
     
-    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, preloaded_image=None):
+    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32):
         """Initialize a game object.
         
         Args:
@@ -18,31 +16,10 @@ class GameObject(sprite.Sprite):
             layer_offset (int): Vertical offset between layers
             width (int): Width of the object if no image is provided
             height (int): Height of the object if no image is provided
-            preloaded_image: A preloaded image to use instead of loading from path
         """
         sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
-        
-        # Fix path for web environment
-        if image_path and platform.system() == "Emscripten":
-            # For web, we need to ensure paths use forward slashes and are properly resolved
-            # Log the original path for debugging
-            print(f"Original image path: {image_path}")
-            
-            # Check if it's an absolute path and make it relative if needed
-            if os.path.isabs(image_path):
-                # Try to convert to a relative path starting from assets
-                path_parts = image_path.replace('\\', '/').split('/')
-                if 'assets' in path_parts:
-                    # Get everything from 'assets' onwards
-                    assets_idx = path_parts.index('assets')
-                    image_path = '/'.join(path_parts[assets_idx:])
-                    print(f"Converted to relative path: {image_path}")
-            
-            # For web, make sure we're using the simplified path
-            image_path = image_path.replace('\\', '/')
-            print(f"Web-compatible image path: {image_path}")
         
         # Create sprite stack for rendering
         self.sprite_stack = SpriteStack(
@@ -50,8 +27,7 @@ class GameObject(sprite.Sprite):
             num_layers=num_layers, 
             layer_offset=layer_offset,
             default_width=width,
-            default_height=height,
-            preloaded_image=preloaded_image
+            default_height=height
         )
         
         # Set basic sprite properties for collision detection

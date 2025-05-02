@@ -18,6 +18,7 @@ from pygame import (
     KEYUP,
     KEYDOWN,
     K_ESCAPE,
+    K_f,
     QUIT,
     init,
     key,
@@ -25,6 +26,7 @@ from pygame import (
     SRCALPHA,
     draw,
     Rect,
+    FULLSCREEN,
 )
 import pygame
 import sys
@@ -50,7 +52,17 @@ CAR_HEIGHT = 31
 CAR_LAYERS = 14
 CAR_LAYER_OFFSET = 1  # Vertical pixels between each layer
 
-SCREEN = display.set_mode((800, 600))
+# Initialize pygame to get screen info
+pygame.init()
+
+# Get the user's screen resolution
+info = pygame.display.Info()
+SCREEN_WIDTH = info.current_w
+SCREEN_HEIGHT = info.current_h
+
+# Set up the display in fullscreen mode
+SCREEN = display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), FULLSCREEN)
+
 FONT = join(FONT_PATH, "space_invaders.ttf")
 
 class Text(object):
@@ -86,11 +98,10 @@ class SpriteStackingUtils:
                 # Slice the image vertically
                 layer = pil_img.crop((0, y_start, img_width, y_end))
                 
-                # Convert PIL Image to pygame surface
-                layer_surface = Surface((img_width, layer_height), pygame.SRCALPHA)
+                # Convert PIL Image to pygame surface using frombuffer instead of fromstring
                 pygame_img_str = layer.tobytes()
                 pygame_img = transform.scale(
-                    pygame.image.fromstring(pygame_img_str, layer.size, layer.mode).convert_alpha(),
+                    pygame.image.frombuffer(pygame_img_str, layer.size, layer.mode).convert_alpha(),
                     (img_width, layer_height)
                 )
                 layers.append(pygame_img)
@@ -126,8 +137,8 @@ class VoxelCar(sprite.Sprite):
         self.screen = screen
         
         # Car position and movement
-        self.x = 400  # Center of the screen horizontally
-        self.y = 450  # Near the bottom of the screen
+        self.x = SCREEN_WIDTH // 2  # Center of the screen horizontally
+        self.y = SCREEN_HEIGHT - 150  # Near the bottom of the screen
         self.speed = 0
         self.max_speed = 5
         self.acceleration = 0.2
@@ -244,8 +255,8 @@ class VoxelCar(sprite.Sprite):
         self.y += move_y
         
         # Keep within screen bounds
-        self.x = max(min(self.x, 800 - self.width//2), self.width//2)
-        self.y = max(min(self.y, 600 - self.height//2), self.height//2)
+        self.x = max(min(self.x, SCREEN_WIDTH - self.width//2), self.width//2)
+        self.y = max(min(self.y, SCREEN_HEIGHT - self.height//2), self.height//2)
         
         # Update rectangle position for collision detection
         self.rect.x = self.x - self.width//2
@@ -296,18 +307,23 @@ class VoxelCarGame:
         self.screen = SCREEN
         self.caption = display.set_caption("Voxel Car Sprite Stacking")
         
+        # Screen mode tracking
+        self.is_fullscreen = True
+        
         # Load background
         background_path = join(IMAGE_PATH, "background.jpg")
         if exists(background_path):
             self.background = image.load(background_path).convert()
+            # Scale background to fit screen
+            self.background = transform.scale(self.background, (SCREEN_WIDTH, SCREEN_HEIGHT))
         else:
             # Create a default background if image doesn't exist
-            self.background = Surface((800, 600))
+            self.background = Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
             self.background.fill((100, 180, 100))  # Green field
             
             # Draw a simple road
-            pygame.draw.rect(self.background, (80, 80, 80), (200, 0, 400, 600))  # Road
-            pygame.draw.rect(self.background, (255, 255, 255), (390, 0, 20, 600), 0)  # Center line
+            pygame.draw.rect(self.background, (80, 80, 80), (SCREEN_WIDTH // 2 - 200, 0, 400, SCREEN_HEIGHT))  # Road
+            pygame.draw.rect(self.background, (255, 255, 255), (SCREEN_WIDTH // 2 - 10, 0, 20, SCREEN_HEIGHT), 0)  # Center line
         
         # Game state
         self.running = True
@@ -320,17 +336,15 @@ class VoxelCarGame:
         try:
             self.font = font.Font(FONT, 36)
             self.small_font = font.Font(FONT, 24)
-            self.title_text = Text(FONT, 50, "Voxel Car", WHITE, 300, 120)
-            self.start_text = Text(FONT, 25, "Press any key to drive", WHITE, 250, 200)
-            self.creator_text = Text(FONT, 20, "Sprite Stacking Demo", GREEN, 580, 570)
+            self.title_text = Text(FONT, 50, "Voxel Car", WHITE, SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 4)
+            self.start_text = Text(FONT, 25, "Press any key to drive", WHITE, SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 3)
         except Exception as e:
             print(f"Error loading fonts: {e}")
             # Create fallback text using system font
             pygame.font.init()
             self.font = pygame.font.SysFont(None, 36)
-            self.title_text = Text(None, 50, "Voxel Car", WHITE, 300, 120)
-            self.start_text = Text(None, 25, "Press any key to drive", WHITE, 250, 200)
-            self.creator_text = Text(None, 20, "Sprite Stacking Demo", GREEN, 580, 570)
+            self.title_text = Text(None, 50, "Voxel Car", WHITE, SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 4)
+            self.start_text = Text(None, 25, "Press any key to drive", WHITE, SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 3)
     
     def handle_events(self):
         """Process input events."""
@@ -361,9 +375,6 @@ class VoxelCarGame:
         else:
             # We ensure the car is explicitly drawn here
             self.car.draw()
-        
-        # Always draw credits
-        self.creator_text.draw(self.screen)
         
         # Update the display
         display.update()

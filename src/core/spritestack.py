@@ -1,8 +1,20 @@
 import pygame
 from pygame import Surface, transform, draw, Rect, SRCALPHA
 from os.path import join, exists
-from PIL import Image
 import os
+import sys
+import platform
+
+# Conditionally import PIL only on desktop platforms
+# This prevents errors on web deployment as PIL might not be fully supported
+if platform.system() != "Emscripten":
+    try:
+        from PIL import Image
+    except ImportError:
+        print("PIL not available, using fallback image loading")
+        Image = None
+else:
+    Image = None
 
 class SpriteStack:
     """
@@ -28,15 +40,22 @@ class SpriteStack:
         
         # Try to load layers from the provided image path
         if image_path and exists(image_path):
-            self.layers = self._create_layers_from_image(image_path)
+            print(f"Loading sprite stack from: {image_path}")
+            # Try different loading methods depending on platform
+            if platform.system() == "Emscripten" or Image is None:
+                self.layers = self._create_web_compatible_layers(image_path)
+            else:
+                self.layers = self._create_layers_from_image(image_path)
         else:
             # If no path provided or file doesn't exist, try to load from separate files
             if image_path:
+                print(f"Image path not found: {image_path}, trying to extract from folder")
                 img_folder = os.path.dirname(image_path)  # Extract folder path
                 self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
         
         # If still no layers, create default ones
         if not self.layers:
+            print("Creating default sprite stack layers")
             self._create_default_layers()
         
         # Set dimensions based on the first layer
@@ -47,8 +66,47 @@ class SpriteStack:
         self.shadow_offset_x = 15  # Default shadow offset from position
         self.shadow_offset_y = 15  # Default shadow offset from position
             
+    def _create_web_compatible_layers(self, img_path):
+        """Create layers using pure pygame methods for web compatibility.
+        
+        Args:
+            img_path (str): Path to the image file
+            
+        Returns:
+            list: List of pygame surfaces for each layer
+        """
+        try:
+            # Load the image using pygame
+            full_img = pygame.image.load(img_path).convert_alpha()
+            img_width = full_img.get_width()
+            img_height = full_img.get_height()
+            layer_height = img_height // self.num_layers
+            
+            layers = []
+            # Create layers by copying sections of the original image
+            for i in range(self.num_layers):
+                # Calculate the subsurface area for this layer
+                y_start = img_height - (i + 1) * layer_height
+                
+                # Create a subsurface (slice) of the image
+                try:
+                    layer = full_img.subsurface((0, y_start, img_width, layer_height))
+                    layers.append(layer)
+                except ValueError as e:
+                    print(f"Error creating subsurface: {e}")
+                    # If subsurface fails, try creating a new surface and copy the pixels
+                    layer = Surface((img_width, layer_height), SRCALPHA)
+                    rect = Rect(0, y_start, img_width, layer_height)
+                    layer.blit(full_img, (0, 0), rect)
+                    layers.append(layer)
+            
+            return layers
+        except Exception as e:
+            print(f"Error in web-compatible layer creation: {e}")
+            return []
+            
     def _create_layers_from_image(self, img_path):
-        """Create sprite stacking layers from a single image.
+        """Create sprite stacking layers from a single image using PIL.
         
         Args:
             img_path (str): Path to the image file
@@ -81,8 +139,9 @@ class SpriteStack:
             
             return layers
         except Exception as e:
-            print(f"Error creating layers from image: {e}")
-            return []
+            print(f"Error creating layers from image with PIL: {e}")
+            # Fall back to web-compatible method
+            return self._create_web_compatible_layers(img_path)
             
     def _extract_layers_from_files(self, img_folder, prefix="layer", num_layers=8):
         """Load separate layer images from files.
@@ -99,8 +158,12 @@ class SpriteStack:
         for i in range(num_layers):
             layer_path = join(img_folder, f"{prefix}{i}.png")
             if exists(layer_path):
-                layer = pygame.image.load(layer_path).convert_alpha()
-                layers.append(layer)
+                try:
+                    layer = pygame.image.load(layer_path).convert_alpha()
+                    layers.append(layer)
+                    print(f"Loaded layer: {layer_path}")
+                except Exception as e:
+                    print(f"Error loading layer {i}: {e}")
             else:
                 print(f"Layer image not found: {layer_path}")
         
@@ -154,18 +217,21 @@ class SpriteStack:
         
         # Draw each layer from bottom to top, with slight offset
         for i, layer in enumerate(self.layers):
-            # Rotate the layer
-            rotated_layer = transform.rotate(layer, -rotation)
-            layer_rect = rotated_layer.get_rect()
-            
-            # Calculate position with offset for 3D effect
-            layer_rect.center = (
-                x,
-                y - i * self.layer_offset
-            )
-            
-            # Draw this layer
-            surface.blit(rotated_layer, layer_rect)
+            try:
+                # Rotate the layer
+                rotated_layer = transform.rotate(layer, -rotation)
+                layer_rect = rotated_layer.get_rect()
+                
+                # Calculate position with offset for 3D effect
+                layer_rect.center = (
+                    x,
+                    y - i * self.layer_offset
+                )
+                
+                # Draw this layer
+                surface.blit(rotated_layer, layer_rect)
+            except Exception as e:
+                print(f"Error drawing layer {i}: {e}")
     
     def _draw_shadow(self, surface, x, y, rotation):
         """Draw a shadow beneath the sprite.
@@ -176,18 +242,21 @@ class SpriteStack:
             y (int): Y position of the object
             rotation (float): Rotation angle in degrees
         """
-        # Create a shadow surface
-        shadow_surf = Surface((self.width, self.height//2), pygame.SRCALPHA)
-        shadow_color = (0, 0, 0, 80)  # Semi-transparent black
-        shadow_rect = pygame.Rect(0, 0, self.width * 0.8, self.height//3)
-        shadow_rect.center = (self.width//2, self.height//4)
-        pygame.draw.ellipse(shadow_surf, shadow_color, shadow_rect)
-        
-        # Get the rotated shadow
-        shadow_surf = transform.rotate(shadow_surf, -rotation)
-        shadow_rect = shadow_surf.get_rect()
-        shadow_rect.center = (x + self.shadow_offset_x, y + self.shadow_offset_y)
-        surface.blit(shadow_surf, shadow_rect)
+        try:
+            # Create a shadow surface
+            shadow_surf = Surface((self.width, self.height//2), pygame.SRCALPHA)
+            shadow_color = (0, 0, 0, 80)  # Semi-transparent black
+            shadow_rect = pygame.Rect(0, 0, self.width * 0.8, self.height//3)
+            shadow_rect.center = (self.width//2, self.height//4)
+            pygame.draw.ellipse(shadow_surf, shadow_color, shadow_rect)
+            
+            # Get the rotated shadow
+            shadow_surf = transform.rotate(shadow_surf, -rotation)
+            shadow_rect = shadow_surf.get_rect()
+            shadow_rect.center = (x + self.shadow_offset_x, y + self.shadow_offset_y)
+            surface.blit(shadow_surf, shadow_rect)
+        except Exception as e:
+            print(f"Error drawing shadow: {e}")
     
     def create_car_layers(self, width, height):
         """Create car-specific layers.

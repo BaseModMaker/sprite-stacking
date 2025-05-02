@@ -4,6 +4,7 @@ Main entry point for the Sprite Stacking game.
 import os
 import sys
 import asyncio
+import platform
 
 # Add the src directory to sys.path to allow relative imports
 sys.path.append(os.path.dirname(__file__))
@@ -12,7 +13,8 @@ sys.path.append(os.path.dirname(__file__))
 from game import Game
 
 
-def main():
+async def main():
+    """Main entry point for the game, using async for web compatibility."""
     # Setup paths
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     asset_dir = os.path.join(base_dir, "assets")
@@ -31,8 +33,14 @@ def main():
     )
     
     # Run game loop
-    asyncio.run(game.main())
+    await game.main()
 
 
+# This is the correct way to run asyncio on both desktop and web
 if __name__ == "__main__":
-    main()
+    if platform.system() == "Emscripten":
+        # For web deployment
+        asyncio.run(main())
+    else:
+        # For desktop
+        asyncio.run(main())

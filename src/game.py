@@ -72,20 +72,21 @@ class Game:
         
         # Create car entity - now just using the generic Entity with the "car" type
         car_img_path = join(image_path, "cars-1.png")
-        print(f"Loading car from: {car_img_path}")
+        
+        # Increased car dimensions for better visibility
+        car_width = 60 
+        car_height = 100
+        
         self.car = Entity(
             x=screen_width // 2,  # x position (center)
             y=screen_height - 150,  # y position (near bottom)
             image_path=car_img_path,
             num_layers=14,
             layer_offset=1,
-            width=15,
-            height=31,
+            width=car_width,
+            height=car_height,
             entity_type="car"
         )
-        # Check if image loaded correctly - debug output
-        print(f"Car sprite stack has {len(self.car.sprite_stack.layers)} layers")
-        print(f"Car dimensions: {self.car.width}x{self.car.height}")
         
         # Create and assign a player controller to the car
         self.car_controller = PlayerController()
@@ -98,7 +99,6 @@ class Game:
             self.title_text = Text(font_file, 50, "Sprite Stacking Demo", self.WHITE, screen_width // 2 - 200, screen_height // 4)
             self.start_text = Text(font_file, 25, "Press any key to drive", self.WHITE, screen_width // 2 - 150, screen_height // 3)
         except Exception as e:
-            print(f"Error loading fonts: {e}")
             # Create fallback text using system font
             pygame.font.init()
             self.font = pygame.font.SysFont(None, 36)

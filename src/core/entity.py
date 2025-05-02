@@ -29,13 +29,13 @@ class Entity(GameObject):
         self.rotation_speed = 3
         self.direction = 0
         self.controller = None
+        self.rotation = 0
         
-        # If we have a special type, customize the sprite stack
-        if entity_type == "car":
+        # If we have a special type and no image was loaded successfully, customize the sprite stack
+        if entity_type == "car" and len(self.sprite_stack.layers) == 0:
             self.sprite_stack.create_car_layers(width, height)
             self.width = self.sprite_stack.width
             self.height = self.sprite_stack.height
-            self.rotation = 180  # Start with car facing down
     
     def set_controller(self, controller):
         """Set a controller for this entity.
@@ -51,8 +51,13 @@ class Entity(GameObject):
         # Apply friction
         self.speed *= self.friction
         
-        # Calculate movement based on current rotation
-        angle_rad = math.radians(self.rotation)
+        # Calculate movement based on current rotation, plus controller offset if available
+        effective_rotation = self.rotation
+        if self.controller and hasattr(self.controller, 'direction_offset'):
+            effective_rotation = (self.rotation + self.controller.direction_offset) % 360
+            
+        # Convert to radians and calculate movement
+        angle_rad = math.radians(effective_rotation)
         move_x = -math.sin(angle_rad) * self.speed
         move_y = math.cos(angle_rad) * self.speed
         

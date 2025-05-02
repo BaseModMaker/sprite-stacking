@@ -26,32 +26,22 @@ class SpriteStack:
         self.default_height = default_height
         self.layers = []
         
-        # Print debug info
-        if image_path:
-            print(f"Attempting to load image: {image_path}")
-            print(f"File exists: {exists(image_path)}")
-        
         # Try to load layers from the provided image path
         if image_path and exists(image_path):
             self.layers = self._create_layers_from_image(image_path)
-            print(f"Created {len(self.layers)} layers from image")
         else:
             # If no path provided or file doesn't exist, try to load from separate files
             if image_path:
                 img_folder = os.path.dirname(image_path)  # Extract folder path
-                print(f"Trying to load layers from folder: {img_folder}")
                 self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
-                print(f"Loaded {len(self.layers)} layers from separate files")
         
         # If still no layers, create default ones
         if not self.layers:
-            print("No image layers loaded, creating default layers")
             self._create_default_layers()
         
         # Set dimensions based on the first layer
         self.width = self.layers[0].get_width() if self.layers else default_width
         self.height = self.layers[0].get_height() if self.layers else default_height
-        print(f"Sprite stack dimensions: {self.width}x{self.height}")
         
         # Shadow properties
         self.shadow_offset_x = 15  # Default shadow offset from position
@@ -71,8 +61,7 @@ class SpriteStack:
             pil_img = Image.open(img_path)
             img_width, img_height = pil_img.size
             layer_height = img_height // self.num_layers
-            print(f"Creating layers from image: {img_path}, size: {img_width}x{img_height}, layer height: {layer_height}")
-            
+
             layers = []
             # Slice the image into horizontal layers from bottom to top
             for i in range(self.num_layers):
@@ -207,18 +196,35 @@ class SpriteStack:
             width (int): Width of the car sprite
             height (int): Height of the car sprite
         """
-        print(f"Creating car layers with dimensions: {width}x{height}")
         self.layers = []
+        
+        # Extended color palette to support more layers
         colors = [
-            (180, 180, 200),  # Light gray (top)
+            (200, 200, 220),  # Lightest gray (top)
+            (190, 190, 210),
+            (180, 180, 200),
+            (170, 170, 190),
             (160, 160, 180),
+            (150, 150, 170),
             (140, 140, 160),
+            (130, 130, 150),
             (120, 120, 140),
+            (110, 110, 130),
             (100, 100, 120),
-            (80, 80, 100),
+            (90, 90, 110),
+            (80, 80, 100), 
+            (70, 70, 90),
             (60, 60, 80),
-            (40, 40, 60)     # Dark gray (bottom)
+            (50, 50, 70),
+            (40, 40, 60),     # Darkest gray (bottom)
         ]
+        
+        # Ensure we have enough colors for all layers
+        if len(colors) < self.num_layers:
+            print(f"Warning: Not enough colors ({len(colors)}) for all layers ({self.num_layers})")
+            # Extend colors list if needed
+            while len(colors) < self.num_layers:
+                colors.append((40, 40, 60))
         
         # Create layers of different colors based on number of layers
         for i in range(self.num_layers):

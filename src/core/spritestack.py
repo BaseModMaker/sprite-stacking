@@ -1,6 +1,6 @@
 import pygame
 from pygame import Surface, transform, draw, Rect, SRCALPHA
-from os.path import join, exists
+from os.path import join, exists, basename, dirname
 import os
 import sys
 import platform
@@ -39,19 +39,26 @@ class SpriteStack:
         self.layers = []
         
         # Try to load layers from the provided image path
-        if image_path and exists(image_path):
+        if image_path:
             print(f"Loading sprite stack from: {image_path}")
-            # Try different loading methods depending on platform
-            if platform.system() == "Emscripten" or Image is None:
-                self.layers = self._create_web_compatible_layers(image_path)
+            
+            # In web environment, check if we need to adjust the path
+            if platform.system() == "Emscripten":
+                # For web, try several path variations
+                self._try_multiple_paths(image_path)
             else:
-                self.layers = self._create_layers_from_image(image_path)
-        else:
-            # If no path provided or file doesn't exist, try to load from separate files
-            if image_path:
-                print(f"Image path not found: {image_path}, trying to extract from folder")
-                img_folder = os.path.dirname(image_path)  # Extract folder path
-                self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
+                # For desktop, just try the original path
+                if exists(image_path):
+                    # Try different loading methods depending on platform
+                    if platform.system() == "Emscripten" or Image is None:
+                        self.layers = self._create_web_compatible_layers(image_path)
+                    else:
+                        self.layers = self._create_layers_from_image(image_path)
+                else:
+                    # If file doesn't exist, try to load from separate files
+                    print(f"Image path not found: {image_path}, trying to extract from folder")
+                    img_folder = dirname(image_path)  # Extract folder path
+                    self.layers = self._extract_layers_from_files(img_folder, "layer", self.num_layers)
         
         # If still no layers, create default ones
         if not self.layers:
@@ -65,6 +72,48 @@ class SpriteStack:
         # Shadow properties
         self.shadow_offset_x = 15  # Default shadow offset from position
         self.shadow_offset_y = 15  # Default shadow offset from position
+    
+    def _try_multiple_paths(self, original_path):
+        """Try loading from multiple path variations for web environment.
+        
+        Args:
+            original_path (str): The original image path
+        """
+        # List of path variations to try
+        possible_paths = [
+            original_path,  # Original path
+            original_path.replace('\\', '/'),  # With forward slashes
+            # Extract filename and try in various locations
+            basename(original_path),  # Just the filename
+            f"assets/images/{basename(original_path)}",  # In assets/images folder
+        ]
+        
+        # If it contains 'assets', try to reconstruct a web-friendly path
+        if 'assets' in original_path:
+            parts = original_path.replace('\\', '/').split('/')
+            if 'assets' in parts:
+                idx = parts.index('assets')
+                web_path = '/'.join(parts[idx:])
+                possible_paths.append(web_path)
+        
+        # Print for debugging
+        print(f"Trying these paths in web environment: {possible_paths}")
+        
+        # Try each path
+        for path in possible_paths:
+            print(f"Trying path: {path}")
+            try:
+                # Use the web-compatible method for Emscripten
+                layers = self._create_web_compatible_layers(path)
+                if layers:
+                    print(f"Successfully loaded image from path: {path}")
+                    self.layers = layers
+                    return
+            except Exception as e:
+                print(f"Failed to load from {path}: {e}")
+        
+        # If we got here, none of the paths worked
+        print("All path variations failed to load")
             
     def _create_web_compatible_layers(self, img_path):
         """Create layers using pure pygame methods for web compatibility.
@@ -77,10 +126,23 @@ class SpriteStack:
         """
         try:
             # Load the image using pygame
-            full_img = pygame.image.load(img_path).convert_alpha()
+            print(f"Loading image with pygame from: {img_path}")
+            full_img = pygame.image.load(img_path)
+            # Convert with alpha if possible
+            try:
+                full_img = full_img.convert_alpha()
+            except Exception as e:
+                print(f"Warning: Could not convert with alpha: {e}")
+                try:
+                    full_img = full_img.convert()
+                except Exception as e2:
+                    print(f"Warning: Could not convert: {e2}")
+            
             img_width = full_img.get_width()
             img_height = full_img.get_height()
             layer_height = img_height // self.num_layers
+            
+            print(f"Image dimensions: {img_width}x{img_height}, layer height: {layer_height}")
             
             layers = []
             # Create layers by copying sections of the original image
@@ -90,6 +152,7 @@ class SpriteStack:
                 
                 # Create a subsurface (slice) of the image
                 try:
+                    print(f"Creating subsurface for layer {i} from y={y_start}")
                     layer = full_img.subsurface((0, y_start, img_width, layer_height))
                     layers.append(layer)
                 except ValueError as e:
@@ -100,6 +163,7 @@ class SpriteStack:
                     layer.blit(full_img, (0, 0), rect)
                     layers.append(layer)
             
+            print(f"Created {len(layers)} layers successfully")
             return layers
         except Exception as e:
             print(f"Error in web-compatible layer creation: {e}")

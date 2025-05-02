@@ -1,6 +1,8 @@
 import pygame
 from pygame import sprite
 from .spritestack import SpriteStack
+import os
+import platform
 
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
@@ -20,6 +22,26 @@ class GameObject(sprite.Sprite):
         sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
+        
+        # Fix path for web environment
+        if image_path and platform.system() == "Emscripten":
+            # For web, we need to ensure paths use forward slashes and are properly resolved
+            # Log the original path for debugging
+            print(f"Original image path: {image_path}")
+            
+            # Check if it's an absolute path and make it relative if needed
+            if os.path.isabs(image_path):
+                # Try to convert to a relative path starting from assets
+                path_parts = image_path.replace('\\', '/').split('/')
+                if 'assets' in path_parts:
+                    # Get everything from 'assets' onwards
+                    assets_idx = path_parts.index('assets')
+                    image_path = '/'.join(path_parts[assets_idx:])
+                    print(f"Converted to relative path: {image_path}")
+            
+            # For web, make sure we're using the simplified path
+            image_path = image_path.replace('\\', '/')
+            print(f"Web-compatible image path: {image_path}")
         
         # Create sprite stack for rendering
         self.sprite_stack = SpriteStack(

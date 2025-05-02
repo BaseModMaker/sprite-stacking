@@ -1,0 +1,65 @@
+name: Build Space Invaders with Pygbag
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-deploy:
+    name: Sandy Inspires - Space Invaders Game
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+        
+    - name: Install dependencies
+      run: |
+        echo "Installing dependencies..."
+        python -m pip install --upgrade pip
+        if [ -f space_invaders/requirements.txt ]; then
+          python -m pip install -r space_invaders/requirements.txt
+        fi
+        python -m pip install pygame-ce pygbag
+        echo "Dependencies installed successfully."
+        
+    - name: List workspace content
+      run: |
+        echo "Listing workspace content:"
+        ls -la $GITHUB_WORKSPACE/space_invaders
+        
+    - name: Build with Pygbag
+      run: |
+        echo "Building with pygbag..."
+        cd $GITHUB_WORKSPACE
+        python -m pygbag --build space_invaders/main.py
+        echo "Build complete - checking output:"
+        ls -la space_invaders/build/web
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'space_invaders/build/web'
+        
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

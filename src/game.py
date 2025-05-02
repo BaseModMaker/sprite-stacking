@@ -1,6 +1,6 @@
 import pygame
 from pygame import mixer, time, display, image, event, KEYUP, QUIT, K_ESCAPE, Surface
-from os.path import join, exists
+from os.path import join, exists, basename
 import asyncio
 import platform
 import os
@@ -14,7 +14,7 @@ from controllers.player_controller import PlayerController
 class Game:
     """Main game class."""
     
-    def __init__(self, screen_width, screen_height, fullscreen=True, asset_path="", font_path="", image_path=""):
+    def __init__(self, screen_width, screen_height, fullscreen=True, asset_path="", font_path="", image_path="", preloaded_assets=None):
         """Initialize the game.
         
         Args:
@@ -24,7 +24,11 @@ class Game:
             asset_path (str): Path to asset directory
             font_path (str): Path to font directory
             image_path (str): Path to image directory
+            preloaded_assets (dict): Dictionary of preloaded assets
         """
+        # Store preloaded assets
+        self.preloaded_assets = preloaded_assets or {}
+        
         # Setup pygame and display
         try:
             mixer.pre_init(44100, -16, 1, 4096)
@@ -59,6 +63,7 @@ class Game:
         print(f"Asset path: {asset_path}")
         print(f"Image path: {image_path}")
         print(f"Font path: {font_path}")
+        print(f"Preloaded assets: {list(self.preloaded_assets.keys())}")
         
         # Define colors
         self.WHITE = (255, 255, 255)
@@ -76,12 +81,21 @@ class Game:
         
         # Try to load background image if available
         try:
-            background_path = join(image_path, "background.jpg")
-            if exists(background_path):
-                self.background = image.load(background_path).convert()
-                # Scale background to fit screen
-                self.background = pygame.transform.scale(self.background, (screen_width, screen_height))
-                print(f"Successfully loaded background from {background_path}")
+            bg_filename = "background.jpg"
+            # First check preloaded assets
+            if bg_filename in self.preloaded_assets:
+                print(f"Using preloaded background: {bg_filename}")
+                bg_img = self.preloaded_assets[bg_filename]
+                self.background = pygame.transform.scale(bg_img, (screen_width, screen_height))
+            else:
+                # Try to load from file
+                background_path = join(image_path, bg_filename)
+                if exists(background_path):
+                    print(f"Loading background from file: {background_path}")
+                    self.background = image.load(background_path).convert()
+                    # Scale background to fit screen
+                    self.background = pygame.transform.scale(self.background, (screen_width, screen_height))
+                    print(f"Successfully loaded background from {background_path}")
         except Exception as e:
             print(f"Error loading background: {e}")
         
@@ -92,8 +106,19 @@ class Game:
         # Car creation with better error handling
         try:
             # Create car entity - using the generic Entity with the "car" type
-            car_img_path = join(image_path, "cars-1.png")
-            print(f"Attempting to load car image from: {car_img_path}")
+            car_filename = "cars-1.png"
+            car_img_path = None
+            car_img = None
+            
+            # First check if we have this asset preloaded
+            if car_filename in self.preloaded_assets:
+                print(f"Using preloaded car image: {car_filename}")
+                car_img = self.preloaded_assets[car_filename]
+                car_img_path = f"{image_path}/{car_filename}"  # Create a path for reference
+            else:
+                # Try to load from file path
+                car_img_path = join(image_path, car_filename)
+                print(f"Attempting to load car image from: {car_img_path}")
             
             # Increased car dimensions for better visibility
             car_width = 60 
@@ -107,7 +132,8 @@ class Game:
                 layer_offset=1,
                 width=car_width,
                 height=car_height,
-                entity_type="car"
+                entity_type="car",
+                preloaded_image=car_img
             )
             
             # Create and assign a player controller to the car

@@ -6,7 +6,7 @@ class Entity(GameObject):
     """An entity is a game object that can move and has physics properties."""
     
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 entity_type="generic"):
+                 entity_type="generic", preloaded_image=None):
         """Initialize an entity.
         
         Args:
@@ -18,8 +18,9 @@ class Entity(GameObject):
             width (int): Width of the entity if no image is provided
             height (int): Height of the entity if no image is provided
             entity_type (str): Type of entity for specialized sprite generation
+            preloaded_image: A preloaded image to use instead of loading from path
         """
-        super().__init__(x, y, image_path, num_layers, layer_offset, width, height)
+        super().__init__(x, y, image_path, num_layers, layer_offset, width, height, preloaded_image)
         self.speed = 0
         self.max_speed = 5
         self.acceleration = 0.2
@@ -33,9 +34,11 @@ class Entity(GameObject):
         
         # If we have a special type and no image was loaded successfully, customize the sprite stack
         if entity_type == "car" and len(self.sprite_stack.layers) == 0:
+            print(f"Creating default car sprite stack with dimensions: {width}x{height}")
             self.sprite_stack.create_car_layers(width, height)
             self.width = self.sprite_stack.width
             self.height = self.sprite_stack.height
+            print(f"Default car sprite created with {len(self.sprite_stack.layers)} layers")
     
     def set_controller(self, controller):
         """Set a controller for this entity.

@@ -7,7 +7,7 @@ import platform
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
     
-    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32):
+    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, preloaded_image=None):
         """Initialize a game object.
         
         Args:
@@ -18,6 +18,7 @@ class GameObject(sprite.Sprite):
             layer_offset (int): Vertical offset between layers
             width (int): Width of the object if no image is provided
             height (int): Height of the object if no image is provided
+            preloaded_image: A preloaded image to use instead of loading from path
         """
         sprite.Sprite.__init__(self)
         self.x = x
@@ -49,7 +50,8 @@ class GameObject(sprite.Sprite):
             num_layers=num_layers, 
             layer_offset=layer_offset,
             default_width=width,
-            default_height=height
+            default_height=height,
+            preloaded_image=preloaded_image
         )
         
         # Set basic sprite properties for collision detection

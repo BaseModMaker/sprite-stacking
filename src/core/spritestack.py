@@ -22,7 +22,7 @@ class SpriteStack:
     This can be used by any game object that needs sprite stacking visualization.
     """
     
-    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32):
+    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32, preloaded_image=None):
         """Initialize a sprite stack.
         
         Args:
@@ -31,6 +31,7 @@ class SpriteStack:
             layer_offset (int): Vertical pixels between each layer
             default_width (int): Default width if no image is provided
             default_height (int): Default height if no image is provided
+            preloaded_image: A preloaded pygame surface to use instead of loading from path
         """
         self.num_layers = num_layers
         self.layer_offset = layer_offset
@@ -38,9 +39,15 @@ class SpriteStack:
         self.default_height = default_height
         self.layers = []
         
+        # If we have a preloaded image, use that instead of loading from path
+        if preloaded_image is not None:
+            print("Using preloaded image for sprite stack")
+            self.layers = self._create_web_compatible_layers_from_surface(preloaded_image)
+            if self.layers:
+                print(f"Successfully created {len(self.layers)} layers from preloaded image")
         # Try to load layers from the provided image path
-        if image_path:
-            print(f"Loading sprite stack from: {image_path}")
+        elif image_path:
+            print(f"Loading sprite stack from path: {image_path}")
             
             # In web environment, check if we need to adjust the path
             if platform.system() == "Emscripten":
@@ -73,6 +80,52 @@ class SpriteStack:
         self.shadow_offset_x = 15  # Default shadow offset from position
         self.shadow_offset_y = 15  # Default shadow offset from position
     
+    def _create_web_compatible_layers_from_surface(self, full_img):
+        """Create layers from an already loaded pygame surface.
+        
+        Args:
+            full_img: A pygame surface containing the full sprite image
+            
+        Returns:
+            list: List of pygame surfaces for each layer
+        """
+        try:
+            print(f"Creating layers from preloaded surface: {full_img.get_width()}x{full_img.get_height()}")
+            img_width = full_img.get_width()
+            img_height = full_img.get_height()
+            layer_height = img_height // self.num_layers
+            
+            print(f"Image dimensions: {img_width}x{img_height}, layer height: {layer_height}")
+            
+            layers = []
+            # Create layers by copying sections of the original image
+            for i in range(self.num_layers):
+                # Calculate the subsurface area for this layer
+                y_start = img_height - (i + 1) * layer_height
+                
+                if y_start < 0 or y_start >= img_height or y_start + layer_height > img_height:
+                    print(f"Warning: Layer {i} y_start={y_start} is out of bounds")
+                    continue
+                
+                # Create a subsurface (slice) of the image
+                try:
+                    print(f"Creating subsurface for layer {i} from y={y_start}")
+                    layer = full_img.subsurface((0, y_start, img_width, layer_height))
+                    layers.append(layer)
+                except ValueError as e:
+                    print(f"Error creating subsurface: {e}")
+                    # If subsurface fails, try creating a new surface and copy the pixels
+                    layer = Surface((img_width, layer_height), SRCALPHA)
+                    rect = Rect(0, y_start, img_width, layer_height)
+                    layer.blit(full_img, (0, 0), rect)
+                    layers.append(layer)
+            
+            print(f"Created {len(layers)} layers successfully from surface")
+            return layers
+        except Exception as e:
+            print(f"Error in layer creation from surface: {e}")
+            return []
+            
     def _try_multiple_paths(self, original_path):
         """Try loading from multiple path variations for web environment.
         

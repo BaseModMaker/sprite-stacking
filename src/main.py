@@ -19,21 +19,32 @@ async def main():
         # Web/pygbag environment
         base_dir = "."
         asset_dir = "assets"
+        
+        # Use smaller resolution for better performance on web
+        screen_width = 800
+        screen_height = 600
     else:
         # Local environment
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         asset_dir = os.path.join(base_dir, "assets")
+        
+        # Use higher resolution for desktop
+        screen_width = 1280
+        screen_height = 720
     
     font_dir = os.path.join(asset_dir, "fonts")
     image_dir = os.path.join(asset_dir, "images")
     sound_dir = os.path.join(asset_dir, "sounds")
     
-    # Create and run the game with web-friendly resolution 
-    # Use a smaller size for better performance in browser
+    print(f"Asset path: {asset_dir}")
+    print(f"Image path: {image_dir}")
+    print(f"Font path: {font_dir}")
+    
+    # Create and run the game
     game = Game(
-        screen_width=800, 
-        screen_height=600,
-        fullscreen=False,  # Fullscreen not supported in browser
+        screen_width=screen_width, 
+        screen_height=screen_height,
+        fullscreen=False,
         asset_path=asset_dir,
         font_path=font_dir,
         image_path=image_dir

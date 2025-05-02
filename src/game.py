@@ -3,6 +3,7 @@ from pygame import mixer, time, display, image, event, KEYUP, QUIT, K_ESCAPE, Su
 from os.path import join, exists
 import asyncio
 import sys
+import os
 
 # Use relative imports instead of absolute imports
 from utils.text import Text
@@ -33,6 +34,10 @@ class Game:
         self.screen_height = screen_height
         self.is_fullscreen = fullscreen and not hasattr(sys, '_emscripten_info')
         
+        # For debugging
+        self.is_web = hasattr(sys, '_emscripten_info')
+        print(f"Running on web: {self.is_web}")
+        
         # Create the correct display for the platform
         flags = 0
         if self.is_fullscreen:
@@ -53,17 +58,17 @@ class Game:
         # Load background
         background_path = join(image_path, "background.jpg")
         if exists(background_path):
-            self.background = image.load(background_path).convert()
-            # Scale background to fit screen
-            self.background = pygame.transform.scale(self.background, (screen_width, screen_height))
+            try:
+                self.background = image.load(background_path)
+                # Convert for better performance
+                self.background = self.background.convert()
+                # Scale background to fit screen
+                self.background = pygame.transform.scale(self.background, (screen_width, screen_height))
+            except Exception as e:
+                print(f"Error loading background: {e}")
+                self._create_default_background()
         else:
-            # Create a default background if image doesn't exist
-            self.background = Surface((screen_width, screen_height))
-            self.background.fill((100, 180, 100))  # Green field
-            
-            # Draw a simple road
-            pygame.draw.rect(self.background, (80, 80, 80), (screen_width // 2 - 200, 0, 400, screen_height))  # Road
-            pygame.draw.rect(self.background, (255, 255, 255), (screen_width // 2 - 10, 0, 20, screen_height), 0)  # Center line
+            self._create_default_background()
         
         # Game state
         self.running = True
@@ -78,6 +83,10 @@ class Game:
         # Increased car dimensions for better visibility
         car_width = 60 
         car_height = 100
+        
+        # For debugging
+        print(f"Attempting to load car from: {car_img_path}")
+        print(f"File exists: {exists(car_img_path)}")
         
         self.car = Entity(
             x=screen_width // 2,  # x position (center)
@@ -94,18 +103,38 @@ class Game:
         self.car_controller = PlayerController()
         self.car.set_controller(self.car_controller)
         
-        # Setup text and UI elements
+        # Setup text and UI elements - with proper positioning for different screen sizes
         try:
-            self.font = pygame.font.Font(font_file, 36)
-            self.small_font = pygame.font.Font(font_file, 24)
-            self.title_text = Text(font_file, 50, "Sprite Stacking Demo", self.WHITE, screen_width // 2 - 200, screen_height // 4)
-            self.start_text = Text(font_file, 25, "Press any key to drive", self.WHITE, screen_width // 2 - 150, screen_height // 3)
+            text_x = screen_width // 2 - 150
+            text_y = screen_height // 4
+            start_x = screen_width // 2 - 120
+            start_y = screen_height // 3
+            
+            if exists(font_file):
+                print(f"Font file found: {font_file}")
+                self.font = pygame.font.Font(font_file, 36)
+                self.small_font = pygame.font.Font(font_file, 24)
+                self.title_text = Text(font_file, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
+                self.start_text = Text(font_file, 25, "Press any key to drive", self.WHITE, start_x, start_y)
+            else:
+                print(f"Font file not found, using system font")
+                raise FileNotFoundError("Font file not found")
         except Exception as e:
+            print(f"Error loading fonts: {e}")
             # Create fallback text using system font
-            pygame.font.init()
             self.font = pygame.font.SysFont(None, 36)
-            self.title_text = Text(None, 50, "Sprite Stacking Demo", self.WHITE, screen_width // 2 - 200, screen_height // 4)
-            self.start_text = Text(None, 25, "Press any key to drive", self.WHITE, screen_width // 2 - 150, screen_height // 3)
+            self.small_font = pygame.font.SysFont(None, 24)
+            self.title_text = Text(None, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
+            self.start_text = Text(None, 25, "Press any key to drive", self.WHITE, start_x, start_y)
+
+    def _create_default_background(self):
+        """Create a default background when image can't be loaded."""
+        self.background = Surface((self.screen_width, self.screen_height))
+        self.background.fill((100, 180, 100))  # Green field
+        
+        # Draw a simple road
+        pygame.draw.rect(self.background, (80, 80, 80), (self.screen_width // 2 - 200, 0, 400, self.screen_height))  # Road
+        pygame.draw.rect(self.background, (255, 255, 255), (self.screen_width // 2 - 10, 0, 20, self.screen_height), 0)  # Center line
     
     def handle_events(self):
         """Process input events."""

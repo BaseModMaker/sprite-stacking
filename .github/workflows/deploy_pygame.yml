@@ -42,6 +42,16 @@ jobs:
         echo "Listing workspace content:"
         ls -la $GITHUB_WORKSPACE/src
         
+    - name: Prepare assets for web build
+      run: |
+        echo "Preparing assets for web build..."
+        mkdir -p $GITHUB_WORKSPACE/src/assets
+        cp -r $GITHUB_WORKSPACE/assets/* $GITHUB_WORKSPACE/src/assets/
+        echo "Assets prepared. Content of src directory:"
+        ls -la $GITHUB_WORKSPACE/src
+        echo "Content of src/assets directory:"
+        ls -la $GITHUB_WORKSPACE/src/assets
+        
     - name: Build with Pygbag
       run: |
         echo "Building with pygbag..."

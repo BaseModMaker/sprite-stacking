@@ -1,7 +1,6 @@
 import pygame
 from pygame import Surface, transform, draw, Rect, SRCALPHA
 from os.path import join, exists
-from PIL import Image
 import os
 import sys
 
@@ -58,52 +57,38 @@ class SpriteStack:
             list: List of pygame surfaces for each layer
         """
         try:
-            # Web version needs to use pygame directly instead of PIL
-            if hasattr(sys, '_emscripten_info'):
-                # Web approach: Load the image with pygame and split it manually
-                full_img = pygame.image.load(img_path).convert_alpha()
-                img_width = full_img.get_width()
-                img_height = full_img.get_height()
-                layer_height = img_height // self.num_layers
-                
-                layers = []
-                # Split the image into layers
-                for i in range(self.num_layers):
-                    # Calculate the slice area for this layer
-                    y_start = img_height - (i + 1) * layer_height
-                    
-                    # Create a subsurface for this layer
-                    layer_surface = pygame.Surface((img_width, layer_height), SRCALPHA)
-                    layer_surface.blit(full_img, (0, 0), 
-                                     (0, y_start, img_width, layer_height))
-                    layers.append(layer_surface)
-                
-                return layers
+            # Web version needs special handling
+            is_web = hasattr(sys, '_emscripten_info')
+            
+            # Load full image
+            full_img = pygame.image.load(img_path)
+            
+            # Add alpha channel if needed and convert for better performance
+            if full_img.get_alpha() is None:
+                full_img = full_img.convert()
             else:
-                # Desktop approach: Use PIL for better image processing
-                # Open the full image file
-                pil_img = Image.open(img_path)
-                img_width, img_height = pil_img.size
-                layer_height = img_height // self.num_layers
-
-                layers = []
-                # Slice the image into horizontal layers from bottom to top
-                for i in range(self.num_layers):
-                    # Calculate the slice area for this layer (left, top, right, bottom)
-                    y_start = img_height - (i + 1) * layer_height
-                    y_end = img_height - i * layer_height
-                    
-                    # Slice the image vertically
-                    layer = pil_img.crop((0, y_start, img_width, y_end))
-                    
-                    # Convert PIL Image to pygame surface
-                    pygame_img_str = layer.tobytes()
-                    pygame_img = pygame.image.fromstring(pygame_img_str, layer.size, layer.mode).convert_alpha()
-                    
-                    # Add to layers
-                    layers.append(pygame_img)
+                full_img = full_img.convert_alpha()
                 
-                return layers
+            img_width = full_img.get_width()
+            img_height = full_img.get_height()
+            layer_height = img_height // self.num_layers
+            
+            layers = []
+            # Split the image into layers
+            for i in range(self.num_layers):
+                # Calculate the slice area for this layer
+                y_start = img_height - (i + 1) * layer_height
+                
+                # Create a surface for this layer
+                layer_surface = pygame.Surface((img_width, layer_height), SRCALPHA)
+                
+                # Copy the appropriate part of the image to this layer surface
+                layer_rect = pygame.Rect(0, y_start, img_width, layer_height)
+                layer_surface.blit(full_img, (0, 0), layer_rect)
+                
+                layers.append(layer_surface)
+            
+            return layers
         except Exception as e:
             print(f"Error creating layers from image: {e}")
             return []
@@ -124,7 +109,12 @@ class SpriteStack:
             layer_path = join(img_folder, f"{prefix}{i}.png")
             if exists(layer_path):
                 try:
-                    layer = pygame.image.load(layer_path).convert_alpha()
+                    layer = pygame.image.load(layer_path)
+                    # Convert surface for better performance
+                    if layer.get_alpha() is None:
+                        layer = layer.convert()
+                    else:
+                        layer = layer.convert_alpha()
                     layers.append(layer)
                 except Exception as e:
                     print(f"Error loading layer image: {e}")
@@ -146,6 +136,10 @@ class SpriteStack:
             (60, 60, 80),
             (40, 40, 60)     # Dark gray (bottom)
         ]
+        
+        # Extend colors list if needed
+        while len(colors) < self.num_layers:
+            colors.append(colors[-1])
         
         # Create layers of different colors based on number of layers
         for i in range(self.num_layers):
@@ -181,18 +175,28 @@ class SpriteStack:
         
         # Draw each layer from bottom to top, with slight offset
         for i, layer in enumerate(self.layers):
-            # Rotate the layer
-            rotated_layer = transform.rotate(layer, -rotation)
-            layer_rect = rotated_layer.get_rect()
+            # Only proceed if the layer is valid
+            if layer is None:
+                continue
+                
+            # Create a copy to avoid modifying the original
+            layer_to_draw = layer.copy()
+            
+            # Apply rotation
+            if rotation != 0:
+                layer_to_draw = transform.rotate(layer_to_draw, -rotation)
+                
+            # Get rect for positioning
+            layer_rect = layer_to_draw.get_rect()
             
             # Calculate position with offset for 3D effect
             layer_rect.center = (
-                x,
-                y - i * self.layer_offset
+                int(x),  # Ensure integer coordinates
+                int(y - i * self.layer_offset)
             )
             
             # Draw this layer
-            surface.blit(rotated_layer, layer_rect)
+            surface.blit(layer_to_draw, layer_rect)
     
     def _draw_shadow(self, surface, x, y, rotation):
         """Draw a shadow beneath the sprite.
@@ -213,7 +217,7 @@ class SpriteStack:
         # Get the rotated shadow
         shadow_surf = transform.rotate(shadow_surf, -rotation)
         shadow_rect = shadow_surf.get_rect()
-        shadow_rect.center = (x + self.shadow_offset_x, y + self.shadow_offset_y)
+        shadow_rect.center = (int(x + self.shadow_offset_x), int(y + self.shadow_offset_y))
         surface.blit(shadow_surf, shadow_rect)
     
     def create_car_layers(self, width, height):

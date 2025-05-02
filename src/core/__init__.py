@@ -1,0 +1,1 @@
+"""Core game system components."""

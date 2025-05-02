@@ -63,7 +63,7 @@ SCREEN_HEIGHT = info.current_h
 # Set up the display in fullscreen mode
 SCREEN = display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), FULLSCREEN)
 
-FONT = join(FONT_PATH, "space_invaders.ttf")
+FONT = join(FONT_PATH, "blocky.ttf")
 
 class Text(object):
     def __init__(self, textFont, size, message, color, xpos, ypos):

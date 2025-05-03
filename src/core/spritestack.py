@@ -225,24 +225,31 @@ class SpriteStack:
         horizontal_rad = math.radians(self.sun_horizontal_angle)
         
         # Calculate shadow length based on vertical angle
-        # Higher vertical angle (sun higher in sky) = shorter shadow
-        shadow_length = self.height * (1.0 - vertical_factor) * 1.5
+        # Lower sun = longer shadow (inverse relationship with vertical_factor)
+        base_shadow_length = self.height * (1.0 - vertical_factor) * 2.5
         
         # Calculate shadow offset based on horizontal angle
-        shadow_offset_x = -math.sin(horizontal_rad) * shadow_length
-        shadow_offset_y = -math.cos(horizontal_rad) * shadow_length
+        shadow_offset_x = -math.sin(horizontal_rad) * base_shadow_length
+        shadow_offset_y = -math.cos(horizontal_rad) * base_shadow_length
         
         # Prepare shadow dimensions - ensure enough room for shifted shadow
-        shadow_width = int(self.width * 1.5 + abs(shadow_offset_x))
-        shadow_height = int(self.height + abs(shadow_offset_y) + shadow_length)
+        shadow_width = int(self.width * 2.0 + abs(shadow_offset_x))
+        shadow_height = int(self.height * 2.0 + abs(shadow_offset_y) + base_shadow_length)
         shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
         
         # Calculate shadow opacity based on vertical angle
         # Higher sun = lighter shadow
         shadow_alpha = int(120 * (1.0 - (vertical_factor * 0.7)))
         
+        # Base position for shadow anchor (center of shadow surface)
+        shadow_center_x = shadow_width // 2
+        shadow_center_y = shadow_height // 2
+        
         # Process each layer to create the composite shadow
-        for i, layer in enumerate(self.layers):
+        # Now iterating in reversed order so the top layer (closest to object) is processed first
+        # and will appear as the farthest shadow layer
+        for i in range(self.num_layers - 1, -1, -1):
+            layer = self.layers[i]
             if layer is None:
                 continue
                 
@@ -262,42 +269,58 @@ class SpriteStack:
                     if layer_copy.get_at((px, py))[3] > 0:  # If pixel is not fully transparent
                         silhouette.set_at((px, py), (0, 0, 0, shadow_alpha))  # Semi-transparent black
             
-            # Calculate layer-specific shadow position
-            # Lower layers (higher i) cast slightly longer shadows
-            layer_factor = 1.0 - (i / self.num_layers)  # 1.0 for first layer, decreasing to 0 for last
-            layer_shadow_x = shadow_offset_x * layer_factor
-            layer_shadow_y = shadow_offset_y * layer_factor
+            # Calculate inverted layer factor (now using the actual index, not the reversed one)
+            # This ensures the top layer (now processed first) is still considered "top" in the calculations
+            # We invert it because now we want the top layers (higher i) to be furthest in shadow
+            layer_factor = i / (self.num_layers - 1) if self.num_layers > 1 else 0
             
-            # Calculate shadow stretch based on vertical angle - lower sun = more stretch
-            stretch_factor = 1.0 + (1.0 - vertical_factor) * 0.5
+            # Higher layers (with higher layer_factor) should move farther from the object
+            # Base layer (bottom, layer_factor=0) stays close to object position
+            # Stretch factor varies progressively with layer height
+            layer_stretch = 1.0 + (1.0 - vertical_factor) * 3.0 * layer_factor
             
-            # Only stretch in the direction of the shadow
+            # Calculate layer-specific shadow offset
+            # Lower layers (bottom) have minimal offset, higher layers have progressively more
+            layer_offset_x = shadow_offset_x * layer_factor
+            layer_offset_y = shadow_offset_y * layer_factor
+            
+            # Only stretch in the direction of the shadow (applies more stretch when sun is lower)
+            # Also scale stretch based on layer height (top layers stretch more than bottom)
             if abs(shadow_offset_x) > abs(shadow_offset_y):
-                # Horizontal stretch
-                stretch_width = int(silhouette.get_width() * stretch_factor)
+                # Horizontal stretching when sun is east/west
+                stretch_width = int(silhouette.get_width() * layer_stretch)
                 silhouette = pygame.transform.scale(silhouette, (stretch_width, silhouette.get_height()))
             else:
-                # Vertical stretch
-                stretch_height = int(silhouette.get_height() * stretch_factor)
+                # Vertical stretching when sun is north/south
+                stretch_height = int(silhouette.get_height() * layer_stretch)
                 silhouette = pygame.transform.scale(silhouette, (silhouette.get_width(), stretch_height))
             
-            # Position and draw this layer's shadow
+            # Position this layer's shadow
+            # Bottom layer stays close to object center, top layers extend farther away
             silhouette_rect = silhouette.get_rect()
-            center_x = shadow_width // 2 + layer_shadow_x * 0.2  # Subtle shift for staggered shadow
-            center_y = shadow_height // 2 + layer_shadow_y * 0.2  # Subtle shift for staggered shadow
-            silhouette_rect.center = (int(center_x), int(center_y))
+            
+            # Position based on layer height - higher layers project farther
+            silhouette_rect.center = (
+                int(shadow_center_x + layer_offset_x),
+                int(shadow_center_y + layer_offset_y)
+            )
+            
+            # Draw this layer's shadow to the shadow surface
             shadow_surf.blit(silhouette, silhouette_rect)
         
-        # Calculate final shadow position - connect to the original object
-        # The object center is the anchor point for the shadow
+        # Calculate final shadow position
+        # Create an anchor at the object's base that shadows extend from
         shadow_rect = shadow_surf.get_rect()
-        # Position shadow by centering and then offsetting based on the sun angle
+        
+        # Position the shadow surface so its center is offset from the object
+        # This creates a proper shadow that extends from the object's base
+        offset_factor = 0.1 + (1.0 - vertical_factor) * 0.3  # More offset for lower sun
         shadow_rect.center = (
-            int(x + shadow_offset_x * 0.5),  # Reduced offset factor to keep shadow closer to object
-            int(y + shadow_offset_y * 0.5)   # Reduced offset factor to keep shadow closer to object
+            int(x + shadow_offset_x * offset_factor),
+            int(y + shadow_offset_y * offset_factor)
         )
         
-        # Draw the final shadow
+        # Draw the final composite shadow
         surface.blit(shadow_surf, shadow_rect)
     
     def create_car_layers(self, width, height):

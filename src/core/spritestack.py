@@ -233,8 +233,9 @@ class SpriteStack:
         shadow_offset_y = -math.cos(horizontal_rad) * base_shadow_length
         
         # Prepare shadow dimensions - ensure enough room for shifted shadow
-        shadow_width = int(self.width * 2.0 + abs(shadow_offset_x))
-        shadow_height = int(self.height * 2.0 + abs(shadow_offset_y) + base_shadow_length)
+        # Increased multipliers to prevent shadows from being cut off at extreme angles
+        shadow_width = int(self.width * 3.5 + abs(shadow_offset_x) * 1.5)
+        shadow_height = int(self.height * 3.5 + abs(shadow_offset_y) * 1.5 + base_shadow_length * 1.2)
         shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
         
         # Calculate shadow opacity based on vertical angle

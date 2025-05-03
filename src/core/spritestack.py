@@ -385,8 +385,15 @@ class SpriteStack:
             pygame.draw.polygon(outline_surface, self.outline_color, outline_points, self.outline_thickness)
         
         # Calculate position on the main surface
+        # Account for the vertical center of the sprite stack
+        vertical_center_offset = (self.num_layers - 1) * self.layer_offset / 2
+        
+        # Add an additional vertical adjustment to move the outline down
+        # This helps center it better on the visual appearance of the car
+        vertical_adjustment = self.height * 0.15  # Adjust this value as needed to fine-tune
+        
         outline_rect = outline_surface.get_rect()
-        outline_rect.center = (int(x), int(y - (self.num_layers - 1) * self.layer_offset / 2))
+        outline_rect.center = (int(x), int(y - vertical_center_offset + vertical_adjustment))
         
         # Draw the outline surface
         surface.blit(outline_surface, outline_rect)

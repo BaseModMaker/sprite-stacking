@@ -86,15 +86,16 @@ class Entity(GameObject):
             self.rect.x = self.x - self.width//2
             self.rect.y = self.y - self.height//2
     
-    def draw(self, surface, draw_shadow=True):
+    def draw(self, surface, draw_shadow=True, performance_mode=0):
         """Draw the entity on the given surface.
         
         Args:
             surface: The pygame surface to draw on
             draw_shadow (bool): Whether to draw a shadow
+            performance_mode (int): 0=Low, 1=Medium, 2=High quality rendering
         """
         # Override the parent draw method to include rotation
-        self.sprite_stack.draw(surface, self.x, self.y, self.rotation, draw_shadow)
+        self.sprite_stack.draw(surface, self.x, self.y, self.rotation, draw_shadow, performance_mode)
     
     def keep_in_bounds(self, width, height):
         """Keep the entity within the given bounds.

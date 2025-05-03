@@ -105,7 +105,7 @@ class Sun:
         """
         if not self.debug_enabled:
             # Just show a hint about debug mode
-            help_surface = small_font.render("Press V to show sun debug info", True, white_color)
+            help_surface = small_font.render("Press V to show debug info", True, white_color)
             surface.blit(help_surface, (10, y_start))
             return
             
@@ -114,7 +114,8 @@ class Sun:
             f"Sun: H angle: {self.horizontal_angle}°, V angle: {self.vertical_angle}°",
             "Q/D: Decrease/Increase horizontal angle",
             "Z/S: Decrease/Increase vertical angle",
-            "V: Toggle sun debug mode"
+            "X: Toggle shadows on/off",
+            "V: Toggle debug info"
         ]
         
         # Draw each line of help text

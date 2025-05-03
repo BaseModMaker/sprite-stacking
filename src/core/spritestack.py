@@ -166,7 +166,7 @@ class SpriteStack:
             
             self.layers.append(layer)
     
-    def draw(self, surface, x, y, rotation=0, draw_shadow=True):
+    def draw(self, surface, x, y, rotation=0, draw_shadow=True, performance_mode=1):
         """Draw the stacked sprite at the specified position.
         
         Args:
@@ -175,31 +175,31 @@ class SpriteStack:
             y (int): Y position to draw at
             rotation (float): Rotation angle in degrees
             draw_shadow (bool): Whether to draw a shadow
+            performance_mode (int): Optimization level - ignored in this version
         """
-        if draw_shadow:
+        # Draw shadow first so it appears behind the sprite
+        if draw_shadow and self.shadow_enabled:
             self._draw_shadow(surface, x, y, rotation)
         
-        # Draw each layer from bottom to top, with slight offset
-        for i, layer in enumerate(self.layers):
-            # Only proceed if the layer is valid
-            if layer is None:
+        # Create rotation cache to avoid redundant transforms
+        rotation_cache = {}
+        
+        # Draw from bottom to top to get correct overlap
+        for i in range(len(self.layers)):
+            if i >= len(self.layers) or self.layers[i] is None:
                 continue
                 
-            # Create a copy to avoid modifying the original
-            layer_to_draw = layer.copy()
-            
-            # Apply rotation
+            # Cache rotated images to avoid redundant transformations
             if rotation != 0:
-                layer_to_draw = transform.rotate(layer_to_draw, -rotation)
+                if i not in rotation_cache:
+                    rotation_cache[i] = transform.rotate(self.layers[i], -rotation)
+                layer_to_draw = rotation_cache[i]
+            else:
+                layer_to_draw = self.layers[i]
                 
-            # Get rect for positioning
+            # Position with offset for 3D effect
             layer_rect = layer_to_draw.get_rect()
-            
-            # Calculate position with offset for 3D effect
-            layer_rect.center = (
-                int(x),  # Ensure integer coordinates
-                int(y - i * self.layer_offset)
-            )
+            layer_rect.center = (int(x), int(y - i * self.layer_offset))
             
             # Draw this layer
             surface.blit(layer_to_draw, layer_rect)
@@ -233,190 +233,95 @@ class SpriteStack:
         shadow_offset_y = -math.cos(horizontal_rad) * base_shadow_length
         
         # Prepare shadow dimensions - ensure enough room for shifted shadow
-        # Increased multipliers to prevent shadows from being cut off at extreme angles
-        shadow_width = int(self.width * 3.5 + abs(shadow_offset_x) * 1.5)
-        shadow_height = int(self.height * 3.5 + abs(shadow_offset_y) * 1.5 + base_shadow_length * 1.2)
+        shadow_width = int(self.width * 3.5)
+        shadow_height = int(self.height * 3.5)
         shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
         
-        # Calculate shadow opacity based on vertical angle
-        # Higher sun = lighter shadow
-        shadow_alpha = int(120 * (1.0 - (vertical_factor * 0.7)))
+        # Calculate shadow opacity based on vertical angle - but make it more opaque
+        # Higher sun = lighter shadow, but with a minimum opacity
+        shadow_alpha = int(180 * (1.0 - (vertical_factor * 0.5)))  # Increased from 120 to 180, reduced fade factor
         
         # Base position for shadow anchor (center of shadow surface)
         shadow_center_x = shadow_width // 2
         shadow_center_y = shadow_height // 2
         
-        # Process each layer to create the composite shadow
-        # Now iterating in reversed order so the top layer (closest to object) is processed first
-        # and will appear as the farthest shadow layer
-        for i in range(self.num_layers - 1, -1, -1):
-            layer = self.layers[i]
-            if layer is None:
+        # Optimization: Use a subset of layers to balance performance and visual quality
+        # Use more layers for smaller sprites, fewer for larger ones
+        layer_count = len(self.layers)
+        if layer_count <= 8:
+            # For few layers, use all of them
+            layer_indices = range(0, layer_count)
+        else:
+            # For many layers, sample evenly
+            step = max(1, layer_count // 5)  # At least 5 layers for shadow
+            layer_indices = range(0, layer_count, step)
+        
+        # Cache for rotated images
+        rotation_cache = {}
+        
+        # Process selected layers to create composite shadow
+        for i in layer_indices:
+            if i >= len(self.layers) or self.layers[i] is None:
                 continue
                 
-            # Make a copy to avoid modifying the original
-            layer_copy = layer.copy()
-            
-            # Apply rotation if needed
+            # Apply rotation if needed (with caching)
             if rotation != 0:
-                layer_copy = transform.rotate(layer_copy, -rotation)
+                if i not in rotation_cache:
+                    rotation_cache[i] = transform.rotate(self.layers[i], -rotation)
+                layer_copy = rotation_cache[i]
+            else:
+                layer_copy = self.layers[i]
                 
-            # Create a silhouette of this layer for the shadow
-            silhouette = pygame.Surface(layer_copy.get_size(), pygame.SRCALPHA)
+            # Create a silhouette using mask for this layer
+            mask = pygame.mask.from_surface(layer_copy)
+            silhouette = mask.to_surface(setcolor=(0, 0, 0, shadow_alpha), unsetcolor=(0, 0, 0, 0))
             
-            # For each pixel, if it's not transparent, make it part of the shadow as fully black (no transparency)
-            for py in range(layer_copy.get_height()):
-                for px in range(layer_copy.get_width()):
-                    if layer_copy.get_at((px, py))[3] > 0:  # If pixel is not fully transparent
-                        silhouette.set_at((px, py), (0, 0, 0, 255))  # Fully black (not transparent)
-            
-            # Calculate inverted layer factor (now using the actual index, not the reversed one)
-            # This ensures the top layer (now processed first) is still considered "top" in the calculations
-            # We invert it because now we want the top layers (higher i) to be furthest in shadow
-            layer_factor = i / (self.num_layers - 1) if self.num_layers > 1 else 0
-            
-            # Higher layers (with higher layer_factor) should move farther from the object
-            # Base layer (bottom, layer_factor=0) stays close to object position
-            # Stretch factor varies progressively with layer height
-            layer_stretch = 1.0 + (1.0 - vertical_factor) * 3.0 * layer_factor
+            # Calculate layer factor based on position in stack (0.0 for bottom, 1.0 for top)
+            layer_factor = i / max(1, layer_count - 1)
             
             # Calculate layer-specific shadow offset
-            # Lower layers (bottom) have minimal offset, higher layers have progressively more
-            layer_offset_x = shadow_offset_x * layer_factor
-            layer_offset_y = shadow_offset_y * layer_factor
-            
-            # Only stretch in the direction of the shadow (applies more stretch when sun is lower)
-            # Also scale stretch based on layer height (top layers stretch more than bottom)
-            if abs(shadow_offset_x) > abs(shadow_offset_y):
-                # Horizontal stretching when sun is east/west
-                stretch_width = int(silhouette.get_width() * layer_stretch)
-                silhouette = pygame.transform.scale(silhouette, (stretch_width, silhouette.get_height()))
+            # Higher layers cast shadows that are further from the object
+            # First layer (i=0) has zero offset to be directly under the object
+            if i == 0:  # First layer is directly under the object
+                layer_offset_x = 0
+                layer_offset_y = 0
             else:
-                # Vertical stretching when sun is north/south
-                stretch_height = int(silhouette.get_height() * layer_stretch)
-                silhouette = pygame.transform.scale(silhouette, (silhouette.get_width(), stretch_height))
+                # Other layers follow the sun angle
+                layer_offset_x = shadow_offset_x * layer_factor * 0.6
+                layer_offset_y = shadow_offset_y * layer_factor * 0.6
             
-            # Position this layer's shadow
-            # Bottom layer stays close to object center, top layers extend farther away
+            # Position the silhouette with appropriate offset
             silhouette_rect = silhouette.get_rect()
-            
-            # Position based on layer height - higher layers project farther
             silhouette_rect.center = (
                 int(shadow_center_x + layer_offset_x),
                 int(shadow_center_y + layer_offset_y)
             )
             
-            # Draw this layer's shadow to the shadow surface
+            # Draw the silhouette to the shadow surface
             shadow_surf.blit(silhouette, silhouette_rect)
         
-        # Calculate final shadow position
-        # Create an anchor at the object's base that shadows extend from
+        # Calculate final shadow position - position directly under the object
         shadow_rect = shadow_surf.get_rect()
-        
-        # Position the shadow surface so its center is offset from the object
-        # This creates a proper shadow that extends from the object's base
-        offset_factor = 0.1 + (1.0 - vertical_factor) * 0.3  # More offset for lower sun
-        shadow_rect.center = (
-            int(x + shadow_offset_x * offset_factor),
-            int(y + shadow_offset_y * offset_factor)
-        )
+        shadow_rect.center = (x, y)  # Place shadow directly under object
         
         # Draw the final composite shadow
         surface.blit(shadow_surf, shadow_rect)
     
-    def create_car_layers(self, width, height):
-        """Create car-specific layers.
-        
-        Args:
-            width (int): Width of the car sprite
-            height (int): Height of the car sprite
-        """
-        self.layers = []
-        
-        # Extended color palette to support more layers
-        colors = [
-            (200, 200, 220),  # Lightest gray (top)
-            (190, 190, 210),
-            (180, 180, 200),
-            (170, 170, 190),
-            (160, 160, 180),
-            (150, 150, 170),
-            (140, 140, 160),
-            (130, 130, 150),
-            (120, 120, 140),
-            (110, 110, 130),
-            (100, 100, 120),
-            (90, 90, 110),
-            (80, 80, 100), 
-            (70, 70, 90),
-            (60, 60, 80),
-            (50, 50, 70),
-            (40, 40, 60),     # Darkest gray (bottom)
-        ]
-        
-        # Ensure we have enough colors for all layers
-        if len(colors) < self.num_layers:
-            print(f"Warning: Not enough colors ({len(colors)}) for all layers ({self.num_layers})")
-            # Extend colors list if needed
-            while len(colors) < self.num_layers:
-                colors.append((40, 40, 60))
-        
-        # Create layers of different colors based on number of layers
-        for i in range(self.num_layers):
-            color_index = min(i, len(colors) - 1)
-            layer = Surface((width, height), pygame.SRCALPHA)
-            
-            # Car body
-            width_ratio = 0.7  # Body width as percentage of car width
-            height_ratio = 0.6  # Body height as percentage of car height
-            x_offset = int((width - (width * width_ratio)) / 2)
-            y_offset = int((height - (height * height_ratio)) / 2)
-            body_width = int(width * width_ratio)
-            body_height = int(height * height_ratio)
-            
-            pygame.draw.rect(layer, colors[color_index], (x_offset, y_offset, body_width, body_height), 0)
-            
-            # Car wheels
-            wheel_color = (30, 30, 30)  # Black wheels
-            wheel_radius = int(height * 0.18)  # Scale wheel size based on car height
-            wheel_y = int(height * 0.78)  # Position wheels near bottom
-            wheel_x1 = int(width * 0.25)  # Left wheel position
-            wheel_x2 = int(width * 0.75)  # Right wheel position
-            
-            pygame.draw.circle(layer, wheel_color, (wheel_x1, wheel_y), wheel_radius)
-            pygame.draw.circle(layer, wheel_color, (wheel_x2, wheel_y), wheel_radius)
-            
-            # Car windows (only on higher layers)
-            if i < self.num_layers // 2:
-                window_color = (100, 200, 255) if i == 0 else (80, 170, 220)
-                window_width = int(width * 0.4)
-                window_height = int(height * 0.35)
-                window_x = int((width - window_width) / 2)
-                window_y = int(height * 0.15)
-                pygame.draw.rect(layer, window_color, (window_x, window_y, window_width, window_height), 0)
-            
-            self.layers.append(layer)
-        
-        # Update dimensions
-        self.width = width
-        self.height = height
-
     def configure_sun(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
-        """Configure the sun position to control shadow projection.
+        """Configure the sun position for shadow calculations.
         
         Args:
             horizontal_angle (int): Horizontal angle of the sun (0-360 degrees)
                 0 = North, 90 = East, 180 = South, 270 = West
             vertical_angle (int): Vertical angle of the sun (0-90 degrees)
-                0 = sun flat on horizon (long shadows), 90 = sun directly overhead (no shadows)
+                0 = sun at horizon (long shadows), 90 = directly overhead (no shadows)
             shadow_enabled (bool): Whether shadows are enabled at all
-        
+                
         Returns:
             SpriteStack: Returns self for method chaining
         """
-        # Validate and set angles
-        self.sun_horizontal_angle = max(0, min(360, horizontal_angle))
-        self.sun_vertical_angle = max(0, min(90, vertical_angle))
+        self.sun_horizontal_angle = horizontal_angle
+        self.sun_vertical_angle = vertical_angle
         self.shadow_enabled = shadow_enabled
-        
         return self
+

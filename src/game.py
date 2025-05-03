@@ -18,7 +18,7 @@ from core.shadow import ShadowManager
 class Game:
     """Main game class."""
     
-    def __init__(self, screen_width, screen_height, fullscreen=False, asset_path="", font_path="", image_path=""):
+    def __init__(self, screen_width, screen_height, fullscreen=False, asset_path="", font_path="", image_path="", performance_mode=0):
         """Initialize the game.
         
         Args:
@@ -28,6 +28,7 @@ class Game:
             asset_path (str): Path to asset directory
             font_path (str): Path to font directory
             image_path (str): Path to image directory
+            performance_mode (int): Ignored - always uses most optimized setting
         """
         # Setup pygame and display
         mixer.pre_init(44100, -16, 1, 4096)
@@ -60,6 +61,9 @@ class Game:
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
         self.YELLOW = (255, 255, 0)  # Color for sun visualization
+        
+        # Always use most optimized performance mode (0)
+        self.performance_mode = 0
         
         # Initialize sun and shadow management
         self.sun = Sun(horizontal_angle=45, vertical_angle=45)
@@ -183,7 +187,7 @@ class Game:
             self.small_font = pygame.font.SysFont(None, 24)
             self.title_text = Text(None, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
             self.start_text = Text(None, 25, "Press any key to drive", self.WHITE, start_x, start_y)
-
+        
     def _create_default_background(self):
         """Create a default background when image can't be loaded."""
         self.background = Surface((self.screen_width, self.screen_height))
@@ -227,6 +231,15 @@ class Game:
                 elif e.key == pygame.K_v:
                     self.sun.toggle_debug()
                     print(f"Sun debug: {'on' if self.sun.debug_enabled else 'off'}")
+                # Toggle shadows on/off
+                elif e.key == pygame.K_x:
+                    enabled = self.shadow_manager.toggle_shadows()
+                    print(f"Shadows: {'enabled' if enabled else 'disabled'}")
+                    self.shadow_manager.update_all(self.sun)
+                # Cycle performance modes
+                elif e.key == pygame.K_p:
+                    self.performance_mode = 0  # Always use most optimized performance mode
+                    print("Performance mode: High (best quality)")
     
     def update(self):
         """Update game state."""
@@ -247,12 +260,12 @@ class Game:
             self.title_text.draw(self.screen)
             self.start_text.draw(self.screen)
         else:
-            # Draw the car entity
-            self.car.draw(self.screen)
+            # Draw the car entity with current performance mode
+            self.car.draw(self.screen, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
             
-            # Draw the tree objects
+            # Draw the tree objects with current performance mode
             for tree in self.trees:
-                tree.draw(self.screen)
+                tree.draw(self.screen, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
             
             # Draw shadow configuration help text and sun
             self.sun.draw_debug_info(self.screen, self.small_font, self.WHITE)

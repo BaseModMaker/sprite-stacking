@@ -46,15 +46,16 @@ class GameObject(sprite.Sprite):
             self.rect.x = self.x - self.width//2
             self.rect.y = self.y - self.height//2
     
-    def draw(self, surface, draw_shadow=True):
+    def draw(self, surface, draw_shadow=True, performance_mode=0):
         """Draw the game object on the given surface.
         
         Args:
             surface: The pygame surface to draw on
             draw_shadow (bool): Whether to draw the shadow
+            performance_mode (int): 0=Low, 1=Medium, 2=High quality rendering
         """
-        # Draw using sprite stack
-        self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow)
+        # Draw using sprite stack, passing along the performance mode
+        self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow, performance_mode)
         
     def configure_shadow(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
         """Configure the shadow by setting sun position parameters.

@@ -41,13 +41,17 @@ async def main():
     print(f"Font path: {font_dir}")
     
     # Create and run the game
+    # Set lower performance mode for web platform to improve performance
+    default_performance_mode = 0 if hasattr(sys, '_emscripten_info') else 1
+    
     game = Game(
         screen_width=screen_width, 
         screen_height=screen_height,
         fullscreen=False,
         asset_path=asset_dir,
         font_path=font_dir,
-        image_path=image_dir
+        image_path=image_dir,
+        performance_mode=default_performance_mode
     )
     
     # Run game loop

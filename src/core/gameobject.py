@@ -75,9 +75,11 @@ class GameObject(sprite.Sprite):
         Returns:
             GameObject: Returns self for method chaining
         """
-        self.sprite_stack.outline_enabled = enabled
-        self.sprite_stack.outline_color = color
-        self.sprite_stack.outline_thickness = thickness
+        self.sprite_stack.outline_manager.configure(
+            enabled=enabled,
+            color=color,
+            thickness=thickness
+        )
         return self
         
     def configure_shadow(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):

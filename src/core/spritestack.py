@@ -11,7 +11,7 @@ class SpriteStack:
     This can be used by any game object that needs sprite stacking visualization.
     """
     
-    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32):
+    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32, outline_enabled=False, outline_color=(255, 0, 0), outline_thickness=2):
         """Initialize a sprite stack.
         
         Args:
@@ -20,12 +20,20 @@ class SpriteStack:
             layer_offset (int): Vertical pixels between each layer
             default_width (int): Default width if no image is provided
             default_height (int): Default height if no image is provided
+            outline_enabled (bool): Whether to draw an outline around the sprite
+            outline_color (tuple): RGB color tuple for the outline
+            outline_thickness (int): Thickness of the outline in pixels
         """
         self.num_layers = num_layers
         self.layer_offset = layer_offset
         self.default_width = default_width
         self.default_height = default_height
         self.layers = []
+        
+        # Outline properties
+        self.outline_enabled = outline_enabled
+        self.outline_color = outline_color
+        self.outline_thickness = outline_thickness
         
         # Try to load layers from the provided image path
         if image_path and exists(image_path):
@@ -203,6 +211,10 @@ class SpriteStack:
             
             # Draw this layer
             surface.blit(layer_to_draw, layer_rect)
+        
+        # Draw outline if enabled
+        if self.outline_enabled:
+            self._draw_outline(surface, x, y, rotation)
     
     def _draw_shadow(self, surface, x, y, rotation):
         """Draw a shadow beneath the sprite based on sun position and object layers.
@@ -306,6 +318,78 @@ class SpriteStack:
         
         # Draw the final composite shadow
         surface.blit(shadow_surf, shadow_rect)
+    
+    def _draw_outline(self, surface, x, y, rotation):
+        """Draw an outline that follows the contour of the sprite-stacked object.
+        
+        Args:
+            surface: Pygame surface to draw on
+            x (int): X position of the object
+            y (int): Y position of the object
+            rotation (float): Rotation angle in degrees
+        """
+        if not self.outline_enabled:
+            return
+            
+        # Create a combined surface that includes all layers to capture the full shape
+        # Calculate the total area needed to contain the sprite stack
+        total_height = self.height + (self.num_layers - 1) * self.layer_offset
+        
+        # Create a temporary surface large enough to contain the stacked sprite
+        # Add padding for rotation and outline
+        padding = max(self.width, total_height) + 20
+        temp_width = self.width + padding * 2
+        temp_height = total_height + padding * 2
+        
+        # Create a temporary surface with alpha channel
+        temp_surface = pygame.Surface((temp_width, temp_height), pygame.SRCALPHA)
+        
+        # Center position on the temporary surface
+        temp_x = temp_width // 2
+        temp_y = temp_height // 2
+        
+        # Draw all layers to the temporary surface without outlines or shadows
+        rotation_cache = {}
+        for i in range(len(self.layers)):
+            if i >= len(self.layers) or self.layers[i] is None:
+                continue
+                
+            # Cache rotated images to avoid redundant transformations
+            if rotation != 0:
+                if i not in rotation_cache:
+                    rotation_cache[i] = pygame.transform.rotate(self.layers[i], -rotation)
+                layer_to_draw = rotation_cache[i]
+            else:
+                layer_to_draw = self.layers[i]
+                
+            # Position with offset for 3D effect
+            layer_rect = layer_to_draw.get_rect()
+            layer_rect.center = (temp_x, temp_y - i * self.layer_offset)
+            
+            # Draw this layer to the temporary surface
+            temp_surface.blit(layer_to_draw, layer_rect)
+            
+        # Create a mask from the combined layers to get the shape
+        mask = pygame.mask.from_surface(temp_surface)
+        
+        # Create the outline by drawing slightly offset versions of the shape
+        # First create a surface for the outline that's the same size as our temp surface
+        outline_surface = pygame.Surface((temp_width, temp_height), pygame.SRCALPHA)
+        
+        # Get the outline points - these are the points at the edge of the mask
+        outline_points = mask.outline()
+        
+        # If we have outline points, draw them
+        if outline_points:
+            # Draw the outline by connecting the points with lines
+            pygame.draw.polygon(outline_surface, self.outline_color, outline_points, self.outline_thickness)
+        
+        # Calculate position on the main surface
+        outline_rect = outline_surface.get_rect()
+        outline_rect.center = (int(x), int(y - (self.num_layers - 1) * self.layer_offset / 2))
+        
+        # Draw the outline surface
+        surface.blit(outline_surface, outline_rect)
     
     def configure_sun(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
         """Configure the sun position for shadow calculations.

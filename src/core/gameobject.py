@@ -5,7 +5,8 @@ from .spritestack import SpriteStack
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
     
-    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32):
+    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
+                 outline_enabled=False, outline_color=(255, 0, 0), outline_thickness=2):
         """Initialize a game object.
         
         Args:
@@ -16,6 +17,9 @@ class GameObject(sprite.Sprite):
             layer_offset (int): Vertical offset between layers
             width (int): Width of the object if no image is provided
             height (int): Height of the object if no image is provided
+            outline_enabled (bool): Whether to draw an outline around the object
+            outline_color (tuple): RGB color tuple for the outline
+            outline_thickness (int): Thickness of the outline in pixels
         """
         sprite.Sprite.__init__(self)
         self.x = x
@@ -27,7 +31,10 @@ class GameObject(sprite.Sprite):
             num_layers=num_layers, 
             layer_offset=layer_offset,
             default_width=width,
-            default_height=height
+            default_height=height,
+            outline_enabled=outline_enabled,
+            outline_color=outline_color,
+            outline_thickness=outline_thickness
         )
         
         # Set basic sprite properties for collision detection
@@ -56,6 +63,22 @@ class GameObject(sprite.Sprite):
         """
         # Draw using sprite stack, passing along the performance mode
         self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow, performance_mode)
+    
+    def configure_outline(self, enabled=True, color=(255, 0, 0), thickness=2):
+        """Configure the outline properties.
+        
+        Args:
+            enabled (bool): Whether the outline is enabled
+            color (tuple): RGB color tuple for the outline
+            thickness (int): Thickness of the outline in pixels
+            
+        Returns:
+            GameObject: Returns self for method chaining
+        """
+        self.sprite_stack.outline_enabled = enabled
+        self.sprite_stack.outline_color = color
+        self.sprite_stack.outline_thickness = thickness
+        return self
         
     def configure_shadow(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
         """Configure the shadow by setting sun position parameters.

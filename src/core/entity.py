@@ -6,7 +6,7 @@ class Entity(GameObject):
     """An entity is a game object that can move and has physics properties."""
     
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 entity_type="generic"):
+                 entity_type="generic", outline_enabled=False, outline_color=(255, 0, 0), outline_thickness=2):
         """Initialize an entity.
         
         Args:
@@ -18,8 +18,14 @@ class Entity(GameObject):
             width (int): Width of the entity if no image is provided
             height (int): Height of the entity if no image is provided
             entity_type (str): Type of entity for specialized sprite generation
+            outline_enabled (bool): Whether to draw an outline around the entity
+            outline_color (tuple): RGB color tuple for the outline
+            outline_thickness (int): Thickness of the outline in pixels
         """
-        super().__init__(x, y, image_path, num_layers, layer_offset, width, height)
+        super().__init__(
+            x, y, image_path, num_layers, layer_offset, width, height, 
+            outline_enabled, outline_color, outline_thickness
+        )
         self.speed = 0
         self.max_speed = 5
         self.acceleration = 0.2

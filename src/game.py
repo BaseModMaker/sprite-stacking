@@ -110,7 +110,10 @@ class Game:
             layer_offset=1,
             width=car_width,
             height=car_height,
-            entity_type="car"
+            entity_type="car",
+            outline_enabled=True,
+            outline_color=(0, 255, 255),  # Cyan outline for better visibility
+            outline_thickness=2
         )
         
         # Register car with shadow manager

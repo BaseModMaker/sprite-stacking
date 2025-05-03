@@ -232,9 +232,9 @@ class SpriteStack:
         shadow_offset_x = -math.sin(horizontal_rad) * shadow_length
         shadow_offset_y = -math.cos(horizontal_rad) * shadow_length
         
-        # Prepare shadow dimensions
-        shadow_width = int(self.width * 1.5)
-        shadow_height = int(self.height + shadow_length)
+        # Prepare shadow dimensions - ensure enough room for shifted shadow
+        shadow_width = int(self.width * 1.5 + abs(shadow_offset_x))
+        shadow_height = int(self.height + abs(shadow_offset_y) + shadow_length)
         shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
         
         # Calculate shadow opacity based on vertical angle
@@ -288,9 +288,14 @@ class SpriteStack:
             silhouette_rect.center = (int(center_x), int(center_y))
             shadow_surf.blit(silhouette, silhouette_rect)
         
-        # Calculate final shadow position
+        # Calculate final shadow position - connect to the original object
+        # The object center is the anchor point for the shadow
         shadow_rect = shadow_surf.get_rect()
-        shadow_rect.center = (int(x + shadow_offset_x * 0.8), int(y + shadow_offset_y * 0.8))
+        # Position shadow by centering and then offsetting based on the sun angle
+        shadow_rect.center = (
+            int(x + shadow_offset_x * 0.5),  # Reduced offset factor to keep shadow closer to object
+            int(y + shadow_offset_y * 0.5)   # Reduced offset factor to keep shadow closer to object
+        )
         
         # Draw the final shadow
         surface.blit(shadow_surf, shadow_rect)

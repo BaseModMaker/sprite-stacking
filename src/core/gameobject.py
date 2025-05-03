@@ -46,11 +46,28 @@ class GameObject(sprite.Sprite):
             self.rect.x = self.x - self.width//2
             self.rect.y = self.y - self.height//2
     
-    def draw(self, surface):
+    def draw(self, surface, draw_shadow=True):
         """Draw the game object on the given surface.
         
         Args:
             surface: The pygame surface to draw on
+            draw_shadow (bool): Whether to draw the shadow
         """
         # Draw using sprite stack
-        self.sprite_stack.draw(surface, self.x, self.y, 0)
+        self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow)
+        
+    def configure_shadow(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
+        """Configure the shadow by setting sun position parameters.
+        
+        Args:
+            horizontal_angle (int): Horizontal angle of the sun (0-360 degrees)
+                0 = North, 90 = East, 180 = South, 270 = West
+            vertical_angle (int): Vertical angle of the sun (0-90 degrees)
+                0 = sun at horizon (long shadows), 90 = directly overhead (no shadows)
+            shadow_enabled (bool): Whether shadows are enabled at all
+                
+        Returns:
+            GameObject: Returns self for method chaining
+        """
+        self.sprite_stack.configure_sun(horizontal_angle, vertical_angle, shadow_enabled)
+        return self

@@ -4,10 +4,13 @@ from os.path import join, exists
 import asyncio
 import sys
 import os
+import random
+import math
 
 # Use relative imports instead of absolute imports
 from utils.text import Text
 from core.entity import Entity
+from core.gameobject import GameObject
 from controllers.player_controller import PlayerController
 
 class Game:
@@ -54,6 +57,13 @@ class Game:
         # Define colors
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
+        self.YELLOW = (255, 255, 0)  # Color for sun visualization
+        
+        # Shadow configuration - now using only angle-based system
+        self.sun_horizontal_angle = 45    # 0-360 degrees (like a compass: 0=North, 90=East, etc.)
+        self.sun_vertical_angle = 45      # 0-90 degrees (0 = horizon, 90 = directly overhead)
+        self.shadow_enabled = True        # Whether shadows are enabled
+        self.sun_debug = False            # Whether to show sun debug information
         
         # Load background
         background_path = join(image_path, "background.jpg")
@@ -99,9 +109,60 @@ class Game:
             entity_type="car"
         )
         
+        # Configure car shadow based on sun position
+        self.car.configure_shadow(
+            self.sun_horizontal_angle,
+            self.sun_vertical_angle,
+            self.shadow_enabled
+        )
+        
         # Create and assign a player controller to the car
         self.car_controller = PlayerController()
         self.car.set_controller(self.car_controller)
+        
+        # Create tree objects at random positions
+        tree_img_path = join(image_path, "tree.png")
+        self.trees = []
+        
+        # Parameters for tree generation
+        num_trees = 10  # Number of trees to create
+        tree_width = 18
+        tree_height = 18
+        road_width = 400  # Width of the road area to avoid
+        road_center = screen_width // 2
+        
+        # Generate trees at random positions, avoiding the road
+        for _ in range(num_trees):
+            # Determine x position (avoid road area)
+            if random.random() < 0.5:
+                # Left side of the road
+                x = random.randint(tree_width//2, road_center - road_width//2 - tree_width//2)
+            else:
+                # Right side of the road
+                x = random.randint(road_center + road_width//2 + tree_width//2, screen_width - tree_width//2)
+            
+            # Random y position
+            y = random.randint(tree_height//2, screen_height - tree_height//2)
+            
+            # Create tree and add to list
+            tree = GameObject(
+                x=x,
+                y=y,
+                image_path=tree_img_path,
+                num_layers=36,
+                layer_offset=1,
+                width=tree_width,
+                height=tree_height
+            )
+            
+            # Configure the tree's shadow with the same sun settings
+            tree.configure_shadow(
+                self.sun_horizontal_angle, 
+                self.sun_vertical_angle, 
+                self.shadow_enabled
+            )
+            
+            self.trees.append(tree)
         
         # Setup text and UI elements - with proper positioning for different screen sizes
         try:
@@ -147,6 +208,51 @@ class Game:
             # Start game on key press
             if not self.game_started and e.type == KEYUP:
                 self.game_started = True
+                
+            # Handle shadow control keys when game is started
+            if self.game_started and e.type == KEYUP:
+                # Adjust horizontal angle using Q and D (European layout)
+                # Fixed direction: Q = increase angle (clockwise), D = decrease angle (counter-clockwise)
+                if e.key == pygame.K_q:
+                    self.sun_horizontal_angle = (self.sun_horizontal_angle + 10) % 360
+                    self._update_all_shadows()
+                elif e.key == pygame.K_d:
+                    self.sun_horizontal_angle = (self.sun_horizontal_angle - 10) % 360
+                    self._update_all_shadows()
+                # Adjust vertical angle using Z and S (European layout)
+                # Fixed direction: Z = increase angle (sun higher), S = decrease angle (sun lower)
+                elif e.key == pygame.K_z:
+                    self.sun_vertical_angle = min(90, self.sun_vertical_angle + 10)
+                    self._update_all_shadows()
+                elif e.key == pygame.K_s:
+                    self.sun_vertical_angle = max(0, self.sun_vertical_angle - 10)
+                    self._update_all_shadows()
+                # Toggle sun debug display (use a different key)
+                elif e.key == pygame.K_v:
+                    self.sun_debug = not self.sun_debug
+                    print(f"Sun debug: {'on' if self.sun_debug else 'off'}")
+    
+    def _update_all_shadows(self):
+        """Update shadow settings for all game objects."""
+        # Update car shadow settings
+        self.car.configure_shadow(
+            self.sun_horizontal_angle,
+            self.sun_vertical_angle,
+            self.shadow_enabled
+        )
+        
+        # Update tree shadow settings
+        for tree in self.trees:
+            tree.configure_shadow(
+                self.sun_horizontal_angle,
+                self.sun_vertical_angle,
+                self.shadow_enabled
+            )
+        
+        # Print current settings for debugging
+        print(f"Sun: horizontal_angle={self.sun_horizontal_angle}°, " +
+              f"vertical_angle={self.sun_vertical_angle}°, " +
+              f"shadows_enabled={'yes' if self.shadow_enabled else 'no'}")
     
     def update(self):
         """Update game state."""
@@ -169,9 +275,92 @@ class Game:
         else:
             # Draw the car entity
             self.car.draw(self.screen)
+            
+            # Draw the tree objects
+            for tree in self.trees:
+                tree.draw(self.screen)
+            
+            # Draw shadow configuration help text
+            self._draw_shadow_controls()
         
         # Update the display
         display.update()
+        
+    def _draw_shadow_controls(self):
+        """Draw help text for shadow controls if debug mode is enabled."""
+        # Only show sun controls if debug mode is on
+        if not self.sun_debug:
+            # Just show a hint about debug mode
+            help_surface = self.small_font.render("Press V to show sun debug info", True, self.WHITE)
+            self.screen.blit(help_surface, (10, 10))
+            return
+            
+        # Draw sun settings and controls
+        help_texts = [
+            f"Sun: H angle: {self.sun_horizontal_angle}°, V angle: {self.sun_vertical_angle}°, " +
+            f"Shadows: {'enabled' if self.shadow_enabled else 'disabled'}",
+            "Q/D: Decrease/Increase horizontal angle",
+            "Z/S: Decrease/Increase vertical angle",
+            "V: Toggle sun debug mode"
+        ]
+        
+        # Draw each line of help text
+        y_pos = 10
+        for text in help_texts:
+            help_surface = self.small_font.render(text, True, self.WHITE)
+            self.screen.blit(help_surface, (10, y_pos))
+            y_pos += 25
+            
+        # Draw a visual representation of the sun
+        self._draw_sun()
+    
+    def _draw_sun(self):
+        """Draw a visual representation of the sun based on current settings."""
+        # Calculate sun position based on horizontal angle only
+        margin = 150  # Distance from screen edge
+        sun_size = 30  # Size of sun circle
+        
+        # Determine position based on horizontal angle (circular path)
+        # Add 90 degrees to correct the sun position to match shadow direction
+        display_angle = (self.sun_horizontal_angle + 270) % 360
+        rad_angle = math.radians(display_angle)
+        x = self.screen_width // 2 + margin * math.cos(rad_angle)
+        y = self.screen_height // 2 - margin * math.sin(rad_angle)
+        
+        # Adjust sun color based on vertical angle
+        vertical_factor = self.sun_vertical_angle / 90.0  # 0.0 to 1.0
+        
+        # Base yellow with intensity based on vertical angle
+        # Higher vertical angle = more intense white/yellow (sun more overhead)
+        # Lower vertical angle = more orange/red (sun closer to horizon)
+        if vertical_factor < 0.5:
+            # Sunset/sunrise colors (orange/red) for low sun angles
+            red = 255
+            green = max(0, int(255 * (vertical_factor * 2)))  # Reduces green for redder appearance
+            blue = 0
+        else:
+            # Yellow to white for higher sun angles
+            red = 255
+            green = 255
+            blue = max(0, int(255 * (vertical_factor - 0.5) * 2))  # Increases blue for whiter appearance
+        
+        sun_color = (red, green, blue)
+        
+        # Draw the sun with appropriate color
+        pygame.draw.circle(self.screen, sun_color, (int(x), int(y)), sun_size)
+        
+        # Draw rays from the sun
+        ray_length = 15
+        for angle in range(0, 360, 45):  # Draw 8 rays
+            ray_angle = math.radians(angle)
+            end_x = x + ray_length * math.cos(ray_angle)
+            end_y = y + ray_length * math.sin(ray_angle)
+            pygame.draw.line(self.screen, sun_color, (int(x), int(y)), (int(end_x), int(end_y)), 3)
+            
+        # Draw a line from the sun to center of screen to show light direction
+        center_x = self.screen_width // 2
+        center_y = self.screen_height // 2
+        pygame.draw.line(self.screen, (255, 255, 0, 128), (int(x), int(y)), (center_x, center_y), 2)
     
     async def main(self):
         """Main game loop."""

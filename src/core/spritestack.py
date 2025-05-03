@@ -3,6 +3,7 @@ from pygame import Surface, transform, draw, Rect, SRCALPHA
 from os.path import join, exists
 import os
 import sys
+import math
 
 class SpriteStack:
     """
@@ -44,8 +45,13 @@ class SpriteStack:
         self.height = self.layers[0].get_height() if self.layers else default_height
         
         # Shadow properties
-        self.shadow_offset_x = 15  # Default shadow offset from position
-        self.shadow_offset_y = 15  # Default shadow offset from position
+        self.shadow_offset_x = 0  # Will be calculated based on sun position
+        self.shadow_offset_y = 0  # Will be calculated based on sun position
+        
+        # Sun position properties - using only angle-based system now
+        self.sun_horizontal_angle = 45      # 0-360 degrees (like a compass: 0=North, 90=East, 180=South, 270=West)
+        self.sun_vertical_angle = 45        # 0-90 degrees (0 = sun at horizon, 90 = sun directly overhead)
+        self.shadow_enabled = True          # Whether shadows are enabled at all
             
     def _create_layers_from_image(self, img_path):
         """Create sprite stacking layers from a single image.
@@ -199,7 +205,7 @@ class SpriteStack:
             surface.blit(layer_to_draw, layer_rect)
     
     def _draw_shadow(self, surface, x, y, rotation):
-        """Draw a shadow beneath the sprite.
+        """Draw a shadow beneath the sprite based on sun position and object layers.
         
         Args:
             surface: Pygame surface to draw on
@@ -207,17 +213,86 @@ class SpriteStack:
             y (int): Y position of the object
             rotation (float): Rotation angle in degrees
         """
-        # Create a shadow surface
-        shadow_surf = Surface((self.width, self.height//2), pygame.SRCALPHA)
-        shadow_color = (0, 0, 0, 80)  # Semi-transparent black
-        shadow_rect = pygame.Rect(0, 0, self.width * 0.8, self.height//3)
-        shadow_rect.center = (self.width//2, self.height//4)
-        pygame.draw.ellipse(shadow_surf, shadow_color, shadow_rect)
+        # Check if shadows are enabled
+        if not self.shadow_enabled:
+            return
+            
+        # Calculate vertical factor (affects shadow length and intensity)
+        # 0° = sun at horizon (long shadows), 90° = sun directly overhead (no shadows)
+        vertical_factor = self.sun_vertical_angle / 90.0
         
-        # Get the rotated shadow
-        shadow_surf = transform.rotate(shadow_surf, -rotation)
+        # Convert horizontal angle to radians for shadow direction calculations
+        horizontal_rad = math.radians(self.sun_horizontal_angle)
+        
+        # Calculate shadow length based on vertical angle
+        # Higher vertical angle (sun higher in sky) = shorter shadow
+        shadow_length = self.height * (1.0 - vertical_factor) * 1.5
+        
+        # Calculate shadow offset based on horizontal angle
+        shadow_offset_x = -math.sin(horizontal_rad) * shadow_length
+        shadow_offset_y = -math.cos(horizontal_rad) * shadow_length
+        
+        # Prepare shadow dimensions
+        shadow_width = int(self.width * 1.5)
+        shadow_height = int(self.height + shadow_length)
+        shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
+        
+        # Calculate shadow opacity based on vertical angle
+        # Higher sun = lighter shadow
+        shadow_alpha = int(120 * (1.0 - (vertical_factor * 0.7)))
+        
+        # Process each layer to create the composite shadow
+        for i, layer in enumerate(self.layers):
+            if layer is None:
+                continue
+                
+            # Make a copy to avoid modifying the original
+            layer_copy = layer.copy()
+            
+            # Apply rotation if needed
+            if rotation != 0:
+                layer_copy = transform.rotate(layer_copy, -rotation)
+                
+            # Create a silhouette of this layer for the shadow
+            silhouette = pygame.Surface(layer_copy.get_size(), pygame.SRCALPHA)
+            
+            # For each pixel, if it's not transparent, make it part of the shadow
+            for py in range(layer_copy.get_height()):
+                for px in range(layer_copy.get_width()):
+                    if layer_copy.get_at((px, py))[3] > 0:  # If pixel is not fully transparent
+                        silhouette.set_at((px, py), (0, 0, 0, shadow_alpha))  # Semi-transparent black
+            
+            # Calculate layer-specific shadow position
+            # Lower layers (higher i) cast slightly longer shadows
+            layer_factor = 1.0 - (i / self.num_layers)  # 1.0 for first layer, decreasing to 0 for last
+            layer_shadow_x = shadow_offset_x * layer_factor
+            layer_shadow_y = shadow_offset_y * layer_factor
+            
+            # Calculate shadow stretch based on vertical angle - lower sun = more stretch
+            stretch_factor = 1.0 + (1.0 - vertical_factor) * 0.5
+            
+            # Only stretch in the direction of the shadow
+            if abs(shadow_offset_x) > abs(shadow_offset_y):
+                # Horizontal stretch
+                stretch_width = int(silhouette.get_width() * stretch_factor)
+                silhouette = pygame.transform.scale(silhouette, (stretch_width, silhouette.get_height()))
+            else:
+                # Vertical stretch
+                stretch_height = int(silhouette.get_height() * stretch_factor)
+                silhouette = pygame.transform.scale(silhouette, (silhouette.get_width(), stretch_height))
+            
+            # Position and draw this layer's shadow
+            silhouette_rect = silhouette.get_rect()
+            center_x = shadow_width // 2 + layer_shadow_x * 0.2  # Subtle shift for staggered shadow
+            center_y = shadow_height // 2 + layer_shadow_y * 0.2  # Subtle shift for staggered shadow
+            silhouette_rect.center = (int(center_x), int(center_y))
+            shadow_surf.blit(silhouette, silhouette_rect)
+        
+        # Calculate final shadow position
         shadow_rect = shadow_surf.get_rect()
-        shadow_rect.center = (int(x + self.shadow_offset_x), int(y + self.shadow_offset_y))
+        shadow_rect.center = (int(x + shadow_offset_x * 0.8), int(y + shadow_offset_y * 0.8))
+        
+        # Draw the final shadow
         surface.blit(shadow_surf, shadow_rect)
     
     def create_car_layers(self, width, height):
@@ -296,3 +371,23 @@ class SpriteStack:
         # Update dimensions
         self.width = width
         self.height = height
+
+    def configure_sun(self, horizontal_angle=45, vertical_angle=45, shadow_enabled=True):
+        """Configure the sun position to control shadow projection.
+        
+        Args:
+            horizontal_angle (int): Horizontal angle of the sun (0-360 degrees)
+                0 = North, 90 = East, 180 = South, 270 = West
+            vertical_angle (int): Vertical angle of the sun (0-90 degrees)
+                0 = sun flat on horizon (long shadows), 90 = sun directly overhead (no shadows)
+            shadow_enabled (bool): Whether shadows are enabled at all
+        
+        Returns:
+            SpriteStack: Returns self for method chaining
+        """
+        # Validate and set angles
+        self.sun_horizontal_angle = max(0, min(360, horizontal_angle))
+        self.sun_vertical_angle = max(0, min(90, vertical_angle))
+        self.shadow_enabled = shadow_enabled
+        
+        return self

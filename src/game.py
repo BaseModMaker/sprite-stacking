@@ -112,8 +112,9 @@ class Game:
             height=car_height,
             entity_type="car",
             outline_enabled=True,
-            outline_color=(0, 255, 255),  # Cyan outline for better visibility
-            outline_thickness=2
+            outline_color=(0, 0, 0),
+            outline_thickness=1,
+            individual_offset=0.21,
         )
         
         # Register car with shadow manager
@@ -155,7 +156,8 @@ class Game:
                 num_layers=36,
                 layer_offset=1,
                 width=tree_width,
-                height=tree_height
+                height=tree_height,
+                outline_enabled=True,
             )
             
             # Add tree to list

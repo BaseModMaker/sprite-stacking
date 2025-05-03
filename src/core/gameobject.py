@@ -6,7 +6,7 @@ class GameObject(sprite.Sprite):
     """Base class for all game objects."""
     
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 outline_enabled=False, outline_color=(255, 0, 0), outline_thickness=2):
+                 outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1):
         """Initialize a game object.
         
         Args:
@@ -34,7 +34,8 @@ class GameObject(sprite.Sprite):
             default_height=height,
             outline_enabled=outline_enabled,
             outline_color=outline_color,
-            outline_thickness=outline_thickness
+            outline_thickness=outline_thickness,
+            individual_offset=individual_offset
         )
         
         # Set basic sprite properties for collision detection

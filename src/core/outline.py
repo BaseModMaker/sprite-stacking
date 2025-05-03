@@ -8,7 +8,7 @@ from pygame import Surface, SRCALPHA
 class OutlineManager:
     """Class to manage outline rendering for sprite stacked objects."""
     
-    def __init__(self, enabled=False, color=(255, 0, 0), thickness=2):
+    def __init__(self, enabled=False, color=(0, 0, 0), thickness=1, individual_offset=1):
         """Initialize the outline manager.
         
         Args:
@@ -19,6 +19,7 @@ class OutlineManager:
         self.enabled = enabled
         self.color = color
         self.thickness = thickness
+        self.individual_offset = individual_offset
     
     def draw_outline(self, surface, x, y, rotation, layers, width, height, num_layers, layer_offset):
         """Draw an outline that follows the contour of the sprite-stacked object.
@@ -96,7 +97,7 @@ class OutlineManager:
         
         # Add an additional vertical adjustment to move the outline down
         # This helps center it better on the visual appearance of the car
-        vertical_adjustment = height * 0.15  # Adjust this value as needed to fine-tune
+        vertical_adjustment = height * self.individual_offset  # Adjust this value as needed to fine-tune
         
         outline_rect = outline_surface.get_rect()
         outline_rect.center = (int(x), int(y - vertical_center_offset + vertical_adjustment))

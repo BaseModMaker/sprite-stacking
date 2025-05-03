@@ -263,11 +263,11 @@ class SpriteStack:
             # Create a silhouette of this layer for the shadow
             silhouette = pygame.Surface(layer_copy.get_size(), pygame.SRCALPHA)
             
-            # For each pixel, if it's not transparent, make it part of the shadow
+            # For each pixel, if it's not transparent, make it part of the shadow as fully black (no transparency)
             for py in range(layer_copy.get_height()):
                 for px in range(layer_copy.get_width()):
                     if layer_copy.get_at((px, py))[3] > 0:  # If pixel is not fully transparent
-                        silhouette.set_at((px, py), (0, 0, 0, shadow_alpha))  # Semi-transparent black
+                        silhouette.set_at((px, py), (0, 0, 0, 255))  # Fully black (not transparent)
             
             # Calculate inverted layer factor (now using the actual index, not the reversed one)
             # This ensures the top layer (now processed first) is still considered "top" in the calculations

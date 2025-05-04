@@ -257,9 +257,10 @@ class SpriteStack:
         shadow_height = int(self.height * 3.5)
         shadow_surf = pygame.Surface((shadow_width, shadow_height), pygame.SRCALPHA)
         
-        # Calculate shadow opacity based on vertical angle - but make it more opaque
-        # Higher sun = lighter shadow, but with a minimum opacity
-        shadow_alpha = int(180 * (1.0 - (vertical_factor * 0.5)))  # Increased from 120 to 180, reduced fade factor
+        # Calculate shadow opacity based on vertical angle - make shadows darker
+        # Higher sun = lighter shadow, but with a higher minimum opacity
+        # Increased maximum alpha from 220 and reduced fade factor from 0.3
+        shadow_alpha = int(220 * (1.0 - (vertical_factor * 0.3)))
         
         # Base position for shadow anchor (center of shadow surface)
         shadow_center_x = shadow_width // 2

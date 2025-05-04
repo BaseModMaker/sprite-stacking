@@ -102,19 +102,33 @@ class Game:
         print(f"Attempting to load car from: {car_img_path}")
         print(f"File exists: {exists(car_img_path)}")
         
+        # self.car = Entity(
+        #     x=screen_width // 2,  # x position (center)
+        #     y=screen_height - 150,  # y position (near bottom)
+        #     image_path=car_img_path,
+        #     num_layers=14,
+        #     layer_offset=1,
+        #     width=car_width,
+        #     height=car_height,
+        #     entity_type="car",
+        #     outline_enabled=True,
+        #     outline_color=(0, 0, 0),
+        #     outline_thickness=1,
+        #     individual_offset=0.21,
+        # )
         self.car = Entity(
             x=screen_width // 2,  # x position (center)
             y=screen_height - 150,  # y position (near bottom)
-            image_path=car_img_path,
-            num_layers=14,
+            image_path=join(image_path, "paras.png"),
+            num_layers=44, # 64 60 44
             layer_offset=1,
-            width=car_width,
-            height=car_height,
+            width=64,
+            height=60,
             entity_type="car",
             outline_enabled=True,
             outline_color=(0, 0, 0),
             outline_thickness=1,
-            individual_offset=0.21,
+            individual_offset=0.38,
         )
         
         # Register car with shadow manager

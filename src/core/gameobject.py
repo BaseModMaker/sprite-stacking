@@ -65,6 +65,37 @@ class GameObject(sprite.Sprite):
         # Draw using sprite stack, passing along the performance mode
         self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow, performance_mode)
     
+    def draw_at_position(self, surface, screen_x, screen_y, draw_shadow=True, performance_mode=0, rotation=None):
+        """Draw the game object on the given surface at the specified screen position.
+        
+        This method is used when rendering with a camera, where screen coordinates
+        have been transformed from world coordinates.
+        
+        Args:
+            surface: The pygame surface to draw on
+            screen_x (int): X position on screen to draw at
+            screen_y (int): Y position on screen to draw at
+            draw_shadow (bool): Whether to draw the shadow
+            performance_mode (int): 0=Low, 1=Medium, 2=High quality rendering
+            rotation (float, optional): Override rotation angle, or None to use object's rotation
+        """
+        # If this is an Entity with rotation, use that unless overridden
+        actual_rotation = 0
+        if hasattr(self, 'rotation') and rotation is None:
+            actual_rotation = self.rotation
+        elif rotation is not None:
+            actual_rotation = rotation
+            
+        # Draw using sprite stack at the specified position
+        self.sprite_stack.draw(
+            surface, 
+            screen_x, 
+            screen_y, 
+            actual_rotation, 
+            draw_shadow, 
+            performance_mode
+        )
+    
     def configure_outline(self, enabled=True, color=(255, 0, 0), thickness=2):
         """Configure the outline properties.
         

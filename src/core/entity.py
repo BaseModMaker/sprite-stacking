@@ -106,9 +106,12 @@ class Entity(GameObject):
     def keep_in_bounds(self, width, height):
         """Keep the entity within the given bounds.
         
+        This method is now a no-op to allow for infinite world movement.
+        Kept for compatibility with existing code.
+        
         Args:
-            width (int): The maximum x coordinate
-            height (int): The maximum y coordinate
+            width (int): The maximum x coordinate (ignored)
+            height (int): The maximum y coordinate (ignored)
         """
-        self.x = max(min(self.x, width - self.width//2), self.width//2)
-        self.y = max(min(self.y, height - self.height//2), self.height//2)
+        # No longer constrain entity position to allow infinite world
+        pass

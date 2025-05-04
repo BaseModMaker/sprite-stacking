@@ -14,6 +14,7 @@ from core.gameobject import GameObject
 from controllers.player_controller import PlayerController
 from core.sun import Sun
 from core.shadow import ShadowManager
+from core.camera import Camera
 
 class Game:
     """Main game class."""
@@ -51,6 +52,9 @@ class Game:
             
         self.screen = display.set_mode((screen_width, screen_height), flags)
         self.caption = display.set_caption("Sprite Stacking Game")
+        
+        # Setup camera
+        self.camera = Camera(screen_width, screen_height)
         
         # Store paths
         self.asset_path = asset_path
@@ -91,7 +95,7 @@ class Game:
         # Load font
         font_file = join(font_path, "blocky.ttf")
         
-        # Create car entity - now just using the generic Entity with the "car" type
+        # Create player entity - now just using the generic Entity with the "car" type
         car_img_path = join(image_path, "cars-1.png")
         
         # Increased car dimensions for better visibility
@@ -102,23 +106,9 @@ class Game:
         print(f"Attempting to load car from: {car_img_path}")
         print(f"File exists: {exists(car_img_path)}")
         
-        # self.car = Entity(
-        #     x=screen_width // 2,  # x position (center)
-        #     y=screen_height - 150,  # y position (near bottom)
-        #     image_path=car_img_path,
-        #     num_layers=14,
-        #     layer_offset=1,
-        #     width=car_width,
-        #     height=car_height,
-        #     entity_type="car",
-        #     outline_enabled=True,
-        #     outline_color=(0, 0, 0),
-        #     outline_thickness=1,
-        #     individual_offset=0.21,
-        # )
-        self.car = Entity(
-            x=screen_width // 2,  # x position (center)
-            y=screen_height - 150,  # y position (near bottom)
+        self.player = Entity(
+            x=0,  # Start at origin for infinite world
+            y=0,  # Start at origin for infinite world
             image_path=join(image_path, "paras.png"),
             num_layers=44, # 64 60 44
             layer_offset=1,
@@ -131,54 +121,15 @@ class Game:
             individual_offset=0.38,
         )
         
-        # Register car with shadow manager
-        self.shadow_manager.register_object(self.car)
+        # Register player with shadow manager
+        self.shadow_manager.register_object(self.player)
         
-        # Create and assign a player controller to the car
-        self.car_controller = PlayerController()
-        self.car.set_controller(self.car_controller)
+        # Create and assign a player controller to the player
+        self.player_controller = PlayerController()
+        self.player.set_controller(self.player_controller)
         
-        # Create tree objects at random positions
-        tree_img_path = join(image_path, "tree.png")
-        self.trees = []
-        
-        # Parameters for tree generation
-        num_trees = 10  # Number of trees to create
-        tree_width = 18
-        tree_height = 18
-        road_width = 400  # Width of the road area to avoid
-        road_center = screen_width // 2
-        
-        # Generate trees at random positions, avoiding the road
-        for _ in range(num_trees):
-            # Determine x position (avoid road area)
-            if random.random() < 0.5:
-                # Left side of the road
-                x = random.randint(tree_width//2, road_center - road_width//2 - tree_width//2)
-            else:
-                # Right side of the road
-                x = random.randint(road_center + road_width//2 + tree_width//2, screen_width - tree_width//2)
-            
-            # Random y position
-            y = random.randint(tree_height//2, screen_height - tree_height//2)
-            
-            # Create tree and add to list
-            tree = GameObject(
-                x=x,
-                y=y,
-                image_path=tree_img_path,
-                num_layers=36,
-                layer_offset=1,
-                width=tree_width,
-                height=tree_height,
-                outline_enabled=True,
-            )
-            
-            # Add tree to list
-            self.trees.append(tree)
-        
-        # Register all trees with shadow manager
-        self.shadow_manager.register_objects(self.trees)
+        # Create tree objects across the infinite world
+        self._create_world_objects(image_path)
         
         # Apply initial shadow settings to all objects
         self.shadow_manager.update_all(self.sun)
@@ -195,7 +146,7 @@ class Game:
                 self.font = pygame.font.Font(font_file, 36)
                 self.small_font = pygame.font.Font(font_file, 24)
                 self.title_text = Text(font_file, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
-                self.start_text = Text(font_file, 25, "Press any key to drive", self.WHITE, start_x, start_y)
+                self.start_text = Text(font_file, 25, "Press any key to explore", self.WHITE, start_x, start_y)
             else:
                 print(f"Font file not found, using system font")
                 raise FileNotFoundError("Font file not found")
@@ -205,7 +156,89 @@ class Game:
             self.font = pygame.font.SysFont(None, 36)
             self.small_font = pygame.font.SysFont(None, 24)
             self.title_text = Text(None, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
-            self.start_text = Text(None, 25, "Press any key to drive", self.WHITE, start_x, start_y)
+            self.start_text = Text(None, 25, "Press any key to explore", self.WHITE, start_x, start_y)
+
+    def _create_world_objects(self, image_path):
+        """Create objects throughout the infinite world."""
+        tree_img_path = join(image_path, "tree.png")
+        self.world_objects = []
+        
+        # Create trees in a grid pattern around the origin
+        # This will give the illusion of an infinite world as we dynamically load more
+        grid_size = 2000  # Size of the initial grid area
+        num_trees = 50   # Number of trees to create in the initial area
+        tree_width = 18
+        tree_height = 18
+        
+        # Generate trees at random positions in the grid
+        for _ in range(num_trees):
+            # Random position within the grid
+            x = random.randint(-grid_size//2, grid_size//2)
+            y = random.randint(-grid_size//2, grid_size//2)
+            
+            # Create tree and add to list
+            tree = GameObject(
+                x=x,
+                y=y,
+                image_path=tree_img_path,
+                num_layers=36,
+                layer_offset=1,
+                width=tree_width,
+                height=tree_height,
+                outline_enabled=True,
+            )
+            
+            # Add tree to list
+            self.world_objects.append(tree)
+        
+        # Register all trees with shadow manager
+        self.shadow_manager.register_objects(self.world_objects)
+        
+    def _generate_world_chunk(self, center_x, center_y, size=2000, num_objects=20):
+        """Generate a new chunk of the world as the player explores.
+        
+        Args:
+            center_x (int): X coordinate of the chunk center
+            center_y (int): Y coordinate of the chunk center
+            size (int): Size of the chunk
+            num_objects (int): Number of objects to place in the chunk
+        """
+        tree_img_path = join(self.image_path, "tree.png")
+        tree_width = 18
+        tree_height = 18
+        
+        new_objects = []
+        
+        # Calculate chunk boundaries
+        min_x = center_x - size//2
+        max_x = center_x + size//2
+        min_y = center_y - size//2
+        max_y = center_y + size//2
+        
+        # Generate objects in this chunk
+        for _ in range(num_objects):
+            x = random.randint(min_x, max_x)
+            y = random.randint(min_y, max_y)
+            
+            # Create tree and add to list
+            tree = GameObject(
+                x=x,
+                y=y,
+                image_path=tree_img_path,
+                num_layers=36,
+                layer_offset=1,
+                width=tree_width,
+                height=tree_height,
+                outline_enabled=True,
+            )
+            
+            # Add tree to list
+            new_objects.append(tree)
+            self.world_objects.append(tree)
+            
+        # Register new objects with shadow manager
+        self.shadow_manager.register_objects(new_objects)
+        return new_objects
         
     def _create_default_background(self):
         """Create a default background when image can't be loaded."""
@@ -263,38 +296,120 @@ class Game:
     def update(self):
         """Update game state."""
         if self.game_started:
-            # Update the car entity
-            self.car.update(self.keys)
+            # Update the player entity
+            self.player.update(self.keys)
             
-            # Keep car within screen bounds
-            self.car.keep_in_bounds(self.screen_width, self.screen_height)
+            # Update camera to follow player
+            self.camera.follow(self.player.x, self.player.y)
+            
+            # Check if we need to generate new world chunks
+            player_chunk_x = int(self.player.x // 2000) * 2000
+            player_chunk_y = int(self.player.y // 2000) * 2000
+            
+            # Store last chunk center to check if we've moved to a new chunk
+            if not hasattr(self, 'last_chunk_center'):
+                self.last_chunk_center = (player_chunk_x, player_chunk_y)
+                
+            # If we've moved to a new chunk, generate new content
+            if (player_chunk_x, player_chunk_y) != self.last_chunk_center:
+                self._generate_world_chunk(player_chunk_x, player_chunk_y)
+                self.last_chunk_center = (player_chunk_x, player_chunk_y)
+                print(f"Generated new chunk at {player_chunk_x}, {player_chunk_y}")
     
     def draw(self):
         """Draw everything to the screen."""
-        # Draw background
-        self.screen.blit(self.background, (0, 0))
+        # Clear camera surface
+        camera_surface = self.camera.get_surface()
+        camera_surface.fill((100, 180, 100))  # Green field background
+        
+        # Draw grid lines to show movement
+        self._draw_world_grid(camera_surface)
         
         if not self.game_started:
-            # Draw menu screen
+            # Draw menu screen directly to main screen
+            self.screen.blit(self.background, (0, 0))
             self.title_text.draw(self.screen)
             self.start_text.draw(self.screen)
         else:
-            # Draw the car entity with current performance mode
-            self.car.draw(self.screen, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
+            # Draw world objects with camera offset
+            visible_objects = self._get_visible_objects()
             
-            # Draw the tree objects with current performance mode
-            for tree in self.trees:
-                tree.draw(self.screen, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
+            for obj in visible_objects:
+                # Convert world coordinates to screen coordinates
+                screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)
+                obj.draw_at_position(camera_surface, screen_x, screen_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
+            
+            # Draw the player at the center of the screen
+            center_x = self.camera.width // 2
+            center_y = self.camera.height // 2
+            self.player.draw_at_position(camera_surface, center_x, center_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
             
             # Draw shadow configuration help text and sun
-            self.sun.draw_debug_info(self.screen, self.small_font, self.WHITE)
+            self.sun.draw_debug_info(camera_surface, self.small_font, self.WHITE)
             
             # Draw sun visualization if debug is enabled
             if self.sun.debug_enabled:
-                self.sun.draw(self.screen, self.screen_width, self.screen_height)
+                self.sun.draw(camera_surface, self.camera.width, self.camera.height)
+                
+            # Draw player coordinates for debugging
+            coord_text = f"Position: ({int(self.player.x)}, {int(self.player.y)})"
+            coord_surface = self.small_font.render(coord_text, True, self.WHITE)
+            camera_surface.blit(coord_surface, (10, self.camera.height - 30))
+            
+            # Apply camera view to screen
+            self.camera.apply_to_screen(self.screen)
         
         # Update the display
         display.update()
+    
+    def _draw_world_grid(self, surface):
+        """Draw a grid to help visualize the infinite world.
+        
+        Args:
+            surface: Surface to draw on
+        """
+        # Calculate grid lines based on camera position
+        grid_size = 200  # Distance between grid lines
+        grid_color = (80, 120, 80)  # Light green grid lines
+        
+        # Calculate the range of grid lines to draw
+        half_width = self.camera.width // 2
+        half_height = self.camera.height // 2
+        
+        # Calculate the offset from grid alignment
+        offset_x = self.camera.x % grid_size
+        offset_y = self.camera.y % grid_size
+        
+        # Draw vertical grid lines
+        for x in range(-half_width - int(offset_x), half_width - int(offset_x) + grid_size, grid_size):
+            screen_x = x + half_width
+            pygame.draw.line(surface, grid_color, (screen_x, 0), (screen_x, self.camera.height), 1)
+            
+        # Draw horizontal grid lines
+        for y in range(-half_height - int(offset_y), half_height - int(offset_y) + grid_size, grid_size):
+            screen_y = y + half_height
+            pygame.draw.line(surface, grid_color, (0, screen_y), (self.camera.width, screen_y), 1)
+    
+    def _get_visible_objects(self):
+        """Get only objects that are currently visible on the screen.
+        
+        Returns:
+            list: List of visible game objects
+        """
+        visible_objects = []
+        
+        # Calculate the screen bounds in world coordinates
+        cam_left = self.camera.x - self.camera.width // 2 - 100  # Add margin
+        cam_right = self.camera.x + self.camera.width // 2 + 100
+        cam_top = self.camera.y - self.camera.height // 2 - 100
+        cam_bottom = self.camera.y + self.camera.height // 2 + 100
+        
+        # Filter objects to only include those in view
+        for obj in self.world_objects:
+            if (cam_left <= obj.x <= cam_right and cam_top <= obj.y <= cam_bottom):
+                visible_objects.append(obj)
+                
+        return visible_objects
     
     async def main(self):
         """Main game loop."""

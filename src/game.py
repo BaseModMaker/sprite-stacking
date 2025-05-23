@@ -1,5 +1,5 @@
 import pygame
-from pygame import mixer, time, display, image, event, KEYUP, QUIT, K_ESCAPE, Surface
+from pygame import mixer, time, display, image, event, KEYUP, QUIT, K_ESCAPE, Surface, mouse
 from os.path import join, exists
 import asyncio
 import sys
@@ -17,7 +17,7 @@ from core.shadow import ShadowManager
 from core.camera import Camera
 
 class Game:
-    """Main game class."""
+    """Main game class for Abyssal Gears: Depths of Iron and Steam."""
     
     def __init__(self, screen_width, screen_height, fullscreen=False, asset_path="", font_path="", image_path="", performance_mode=0):
         """Initialize the game.
@@ -51,7 +51,7 @@ class Game:
             flags = pygame.FULLSCREEN
             
         self.screen = display.set_mode((screen_width, screen_height), flags)
-        self.caption = display.set_caption("Sprite Stacking Game")
+        self.caption = display.set_caption("Abyssal Gears: Depths of Iron and Steam")
         
         # Setup camera
         self.camera = Camera(screen_width, screen_height)
@@ -95,58 +95,46 @@ class Game:
         # Load font
         font_file = join(font_path, "blocky.ttf")
         
-        # Create player entity - now just using the generic Entity with the "car" type
-        car_img_path = join(image_path, "cars-1.png")
-        
-        # Increased car dimensions for better visibility
-        car_width = 60 
-        car_height = 100
-        
-        # For debugging
-        print(f"Attempting to load car from: {car_img_path}")
-        print(f"File exists: {exists(car_img_path)}")
-        
+        # Create player submarine entity
+        submarine_img_path = join(image_path, "yellow-submarine.png")
         self.player = Entity(
-            x=0,  # Start at origin for infinite world
-            y=0,  # Start at origin for infinite world
-            image_path=join(image_path, "paras.png"),
-            num_layers=44, # 64 60 44
+            x=0,
+            y=0,
+            image_path=submarine_img_path,
+            num_layers=24,  # yellow-submarine.png is 32x16x24
             layer_offset=1,
-            width=64,
-            height=60,
-            entity_type="car",
+            width=32,
+            height=16,
+            entity_type="submarine",
             outline_enabled=True,
             outline_color=(0, 0, 0),
             outline_thickness=1,
-            individual_offset=0.38,
+            individual_offset=0.75,
         )
-        
-        # Register player with shadow manager
         self.shadow_manager.register_object(self.player)
         
         # Create and assign a player controller to the player
         self.player_controller = PlayerController()
         self.player.set_controller(self.player_controller)
         
-        # Create tree objects across the infinite world
-        self._create_world_objects(image_path)
-        
-        # Apply initial shadow settings to all objects
+        # Remove car/tree/road logic and create dungeon objects
+        self._create_dungeon_objects(image_path)
+          # Apply initial shadow settings to all objects
         self.shadow_manager.update_all(self.sun)
         
         # Setup text and UI elements - with proper positioning for different screen sizes
         try:
-            text_x = screen_width // 2 - 150
+            text_x = screen_width // 2 - 200
             text_y = screen_height // 4
-            start_x = screen_width // 2 - 120
+            start_x = screen_width // 2 - 150
             start_y = screen_height // 3
             
             if exists(font_file):
                 print(f"Font file found: {font_file}")
                 self.font = pygame.font.Font(font_file, 36)
                 self.small_font = pygame.font.Font(font_file, 24)
-                self.title_text = Text(font_file, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
-                self.start_text = Text(font_file, 25, "Press any key to explore", self.WHITE, start_x, start_y)
+                self.title_text = Text(font_file, 50, "Abyssal Gears: Depths of Iron and Steam", self.WHITE, text_x, text_y)
+                self.start_text = Text(font_file, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
             else:
                 print(f"Font file not found, using system font")
                 raise FileNotFoundError("Font file not found")
@@ -155,100 +143,122 @@ class Game:
             # Create fallback text using system font
             self.font = pygame.font.SysFont(None, 36)
             self.small_font = pygame.font.SysFont(None, 24)
-            self.title_text = Text(None, 50, "Sprite Stacking Demo", self.WHITE, text_x, text_y)
-            self.start_text = Text(None, 25, "Press any key to explore", self.WHITE, start_x, start_y)
+            self.title_text = Text(None, 50, "Abyssal Gears: Depths of Iron and Steam", self.WHITE, text_x, text_y)
+            self.start_text = Text(None, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
 
-    def _create_world_objects(self, image_path):
-        """Create objects throughout the infinite world."""
-        tree_img_path = join(image_path, "tree.png")
+    def _create_dungeon_objects(self, image_path):
+        """Create underwater kelp for the game environment."""
         self.world_objects = []
+        # Use kelp image for underwater vegetation
+        kelp_img_path = join(image_path, "kelp.png")
+        grid_size = 2000
+        num_kelp = 50  # More kelp for a denser underwater feel
         
-        # Create trees in a grid pattern around the origin
-        # This will give the illusion of an infinite world as we dynamically load more
-        grid_size = 2000  # Size of the initial grid area
-        num_trees = 50   # Number of trees to create in the initial area
-        tree_width = 18
-        tree_height = 18
-        
-        # Generate trees at random positions in the grid
-        for _ in range(num_trees):
-            # Random position within the grid
+        for _ in range(num_kelp):
             x = random.randint(-grid_size//2, grid_size//2)
             y = random.randint(-grid_size//2, grid_size//2)
-            
-            # Create tree and add to list
-            tree = GameObject(
+            kelp = GameObject(
                 x=x,
                 y=y,
-                image_path=tree_img_path,
-                num_layers=36,
+                image_path=kelp_img_path,
+                num_layers=24,  # kelp.png is 11x8x24
                 layer_offset=1,
-                width=tree_width,
-                height=tree_height,
-                outline_enabled=True,
+                width=11,
+                height=8,
+                outline_enabled=False,  # No outline for natural objects
             )
-            
-            # Add tree to list
-            self.world_objects.append(tree)
+            self.world_objects.append(kelp)
         
-        # Register all trees with shadow manager
         self.shadow_manager.register_objects(self.world_objects)
-        
+
     def _generate_world_chunk(self, center_x, center_y, size=2000, num_objects=20):
-        """Generate a new chunk of the world as the player explores.
-        
-        Args:
-            center_x (int): X coordinate of the chunk center
-            center_y (int): Y coordinate of the chunk center
-            size (int): Size of the chunk
-            num_objects (int): Number of objects to place in the chunk
-        """
-        tree_img_path = join(self.image_path, "tree.png")
-        tree_width = 18
-        tree_height = 18
-        
+        """Generate a new chunk of kelp as the player explores."""
+        kelp_img_path = join(self.image_path, "kelp.png")
         new_objects = []
         
-        # Calculate chunk boundaries
         min_x = center_x - size//2
         max_x = center_x + size//2
         min_y = center_y - size//2
         max_y = center_y + size//2
         
-        # Generate objects in this chunk
         for _ in range(num_objects):
             x = random.randint(min_x, max_x)
             y = random.randint(min_y, max_y)
             
-            # Create tree and add to list
-            tree = GameObject(
+            kelp = GameObject(
                 x=x,
                 y=y,
-                image_path=tree_img_path,
-                num_layers=36,
+                image_path=kelp_img_path,
+                num_layers=24,
                 layer_offset=1,
-                width=tree_width,
-                height=tree_height,
-                outline_enabled=True,
+                width=11,
+                height=8,
+                outline_enabled=False,
             )
             
-            # Add tree to list
-            new_objects.append(tree)
-            self.world_objects.append(tree)
+            new_objects.append(kelp)
+            self.world_objects.append(kelp)
             
-        # Register new objects with shadow manager
         self.shadow_manager.register_objects(new_objects)
         return new_objects
-        
+
     def _create_default_background(self):
-        """Create a default background when image can't be loaded."""
+        """Create a deep ocean water background."""
         self.background = Surface((self.screen_width, self.screen_height))
-        self.background.fill((100, 180, 100))  # Green field
         
-        # Draw a simple road
-        pygame.draw.rect(self.background, (80, 80, 80), (self.screen_width // 2 - 200, 0, 400, self.screen_height))  # Road
-        pygame.draw.rect(self.background, (255, 255, 255), (self.screen_width // 2 - 10, 0, 20, self.screen_height), 0)  # Center line
-    
+        # Create a gradient from dark blue (bottom) to slightly lighter blue (top)
+        for y in range(self.screen_height):
+            # Calculate gradient color - darker at the bottom, lighter at the top
+            depth_factor = y / self.screen_height
+            blue = 40 + int(40 * (1 - depth_factor))  # 40-80 range
+            green = 65 + int(15 * (1 - depth_factor))  # 65-80 range
+            
+            # Draw a horizontal line with the calculated color
+            pygame.draw.line(
+                self.background,
+                (10, green, blue),
+                (0, y),
+                (self.screen_width, y)
+            )
+        
+        # Add some random bubbles for an underwater effect
+        for _ in range(50):
+            x = random.randint(0, self.screen_width)
+            y = random.randint(0, self.screen_height)
+            radius = random.randint(1, 5)
+            alpha = random.randint(40, 120)
+            
+            # Create a surface for the semi-transparent bubble
+            bubble_surface = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+            pygame.draw.circle(
+                bubble_surface,
+                (255, 255, 255, alpha),
+                (radius, radius),
+                radius
+            )
+            self.background.blit(bubble_surface, (x, y))
+            
+        # Add some light rays from the surface
+        for _ in range(10):
+            start_x = random.randint(0, self.screen_width)
+            width = random.randint(20, 80)
+            
+            # Create a surface for the semi-transparent light ray
+            ray_surface = pygame.Surface((width, self.screen_height), pygame.SRCALPHA)
+            
+            # Fill with a gradient
+            for ray_y in range(self.screen_height):
+                depth_factor = ray_y / self.screen_height
+                alpha = int(25 * (1 - depth_factor))  # Fade out as it goes deeper
+                pygame.draw.line(
+                    ray_surface,
+                    (255, 255, 220, alpha),
+                    (width//2, ray_y),
+                    (width//2, ray_y)
+                )
+                
+            self.background.blit(ray_surface, (start_x, 0))
+
     def handle_events(self):
         """Process input events."""
         self.keys = pygame.key.get_pressed()
@@ -318,9 +328,23 @@ class Game:
     
     def draw(self):
         """Draw everything to the screen."""
-        # Clear camera surface
+        # Clear camera surface with deep blue underwater color
         camera_surface = self.camera.get_surface()
-        camera_surface.fill((100, 180, 100))  # Green field background
+        
+        # Create a deep blue gradient background
+        for y in range(self.camera.height):
+            # Calculate gradient color - darker at the bottom, lighter at the top
+            depth_factor = y / self.camera.height
+            blue = 40 + int(40 * (1 - depth_factor))  # 40-80 range
+            green = 65 + int(15 * (1 - depth_factor))  # 65-80 range
+            
+            # Draw a horizontal line with the calculated color
+            pygame.draw.line(
+                camera_surface,
+                (10, green, blue),
+                (0, y),
+                (self.camera.width, y)
+            )
         
         # Draw grid lines to show movement
         self._draw_world_grid(camera_surface)
@@ -356,6 +380,40 @@ class Game:
             coord_surface = self.small_font.render(coord_text, True, self.WHITE)
             camera_surface.blit(coord_surface, (10, self.camera.height - 30))
             
+            # Draw stamina bar
+            if hasattr(self.player_controller, 'stamina') and hasattr(self.player_controller, 'max_stamina'):
+                stamina_width = 200
+                stamina_height = 15
+                stamina_x = self.camera.width - stamina_width - 20
+                stamina_y = self.camera.height - stamina_height - 20
+                
+                # Draw background
+                pygame.draw.rect(camera_surface, (50, 50, 50), 
+                                (stamina_x, stamina_y, stamina_width, stamina_height))
+                
+                # Draw current stamina
+                current_width = int((self.player_controller.stamina / self.player_controller.max_stamina) * stamina_width)
+                if self.player_controller.boost_active:
+                    # Green when boosting
+                    stamina_color = (0, 255, 0)
+                elif self.player_controller.stamina < self.player_controller.max_stamina * 0.3:
+                    # Red when low
+                    stamina_color = (255, 50, 50)
+                else:
+                    # Blue normally
+                    stamina_color = (50, 150, 255)
+                    
+                pygame.draw.rect(camera_surface, stamina_color, 
+                                (stamina_x, stamina_y, current_width, stamina_height))
+                
+                # Draw border
+                pygame.draw.rect(camera_surface, (200, 200, 200), 
+                                (stamina_x, stamina_y, stamina_width, stamina_height), 1)
+                
+                # Label
+                stamina_label = self.small_font.render("STAMINA", True, (255, 255, 255))
+                camera_surface.blit(stamina_label, (stamina_x, stamina_y - 25))
+            
             # Apply camera view to screen
             self.camera.apply_to_screen(self.screen)
         
@@ -363,14 +421,10 @@ class Game:
         display.update()
     
     def _draw_world_grid(self, surface):
-        """Draw a grid to help visualize the infinite world.
-        
-        Args:
-            surface: Surface to draw on
-        """
+        """Draw subtle underwater grid lines to help with depth perception."""
         # Calculate grid lines based on camera position
         grid_size = 200  # Distance between grid lines
-        grid_color = (80, 120, 80)  # Light green grid lines
+        grid_color = (40, 70, 90, 100)  # Subtle underwater grid color with transparency
         
         # Calculate the range of grid lines to draw
         half_width = self.camera.width // 2
@@ -380,15 +434,21 @@ class Game:
         offset_x = self.camera.x % grid_size
         offset_y = self.camera.y % grid_size
         
+        # Create a surface with alpha for semi-transparent grid lines
+        grid_surface = pygame.Surface((self.camera.width, self.camera.height), pygame.SRCALPHA)
+        
         # Draw vertical grid lines
         for x in range(-half_width - int(offset_x), half_width - int(offset_x) + grid_size, grid_size):
             screen_x = x + half_width
-            pygame.draw.line(surface, grid_color, (screen_x, 0), (screen_x, self.camera.height), 1)
+            pygame.draw.line(grid_surface, grid_color, (screen_x, 0), (screen_x, self.camera.height), 1)
             
         # Draw horizontal grid lines
         for y in range(-half_height - int(offset_y), half_height - int(offset_y) + grid_size, grid_size):
             screen_y = y + half_height
-            pygame.draw.line(surface, grid_color, (0, screen_y), (self.camera.width, screen_y), 1)
+            pygame.draw.line(grid_surface, grid_color, (0, screen_y), (self.camera.width, screen_y), 1)
+        
+        # Apply the grid surface
+        surface.blit(grid_surface, (0, 0))
     
     def _get_visible_objects(self):
         """Get only objects that are currently visible on the screen.

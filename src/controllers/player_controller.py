@@ -1,37 +1,107 @@
-from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
+from pygame import K_z, K_q, K_s, K_d, K_SPACE, MOUSEBUTTONDOWN
 
 class PlayerController:
-    """Controller for player-controlled entities."""
+    """Controller for submarine player entities in Abyssal Gears."""
     
     def __init__(self):
-        """Initialize a new player controller."""
+        """Initialize a new submarine controller."""
         self.entity = None
-        self.direction_offset = 180  # Offset angle to make car face the direction of movement
+        self.direction_offset = 180  # Offset angle to make submarine face the direction of movement
+        self.boost_active = False
+        self.boost_cooldown = 0
+        self.max_boost_cooldown = 60  # Frames
+        self.max_stamina = 100
+        self.stamina = self.max_stamina
+        self.stamina_regen_rate = 0.5
+        self.boost_stamina_cost = 1.0
+        self.firing_left = False
+        self.firing_right = False
+        self.fire_cooldown_left = 0
+        self.fire_cooldown_right = 0
+        self.fire_rate = 15  # Frames between shots
     
     def update(self, keys, *args, **kwargs):
         """Update the entity based on key inputs.
         
         Args:
             keys: Dictionary of key states from pygame.key.get_pressed()
-            *args: Additional arguments
+            *args: Additional arguments including mouse buttons
             **kwargs: Additional keyword arguments
         """
         if not self.entity:
             return
-            
-        # Handle acceleration based on key input
-        if keys[K_UP]:
+        
+        # Get mouse buttons if provided
+        mouse_buttons = kwargs.get('mouse_buttons', [0, 0, 0])
+        
+        # Movement controls (ZQSD)
+        # Z - Forward
+        if keys[K_z]:
             self.entity.speed += self.entity.acceleration
-        elif keys[K_DOWN]:
+        # S - Backward
+        elif keys[K_s]:
             self.entity.speed -= self.entity.acceleration
             
-        # Cap speed
-        self.entity.speed = max(min(self.entity.speed, 
-                                   self.entity.max_speed), 
-                               -self.entity.max_speed * 0.6)
-        
-        # Handle rotation
-        if keys[K_LEFT]:
+        # Handle rotation (Q/D for left/right)
+        if keys[K_q]:
             self.entity.rotation = (self.entity.rotation - self.entity.rotation_speed) % 360
-        if keys[K_RIGHT]:
+        if keys[K_d]:
             self.entity.rotation = (self.entity.rotation + self.entity.rotation_speed) % 360
+            
+        # Boost (Spacebar)
+        if keys[K_SPACE] and self.stamina > 0 and self.boost_cooldown <= 0:
+            self.boost_active = True
+            self.stamina -= self.boost_stamina_cost
+            if self.stamina <= 0:
+                self.boost_active = False
+                self.boost_cooldown = self.max_boost_cooldown
+        else:
+            self.boost_active = False
+            
+        # Regenerate stamina when not boosting
+        if not self.boost_active and self.stamina < self.max_stamina:
+            self.stamina = min(self.max_stamina, self.stamina + self.stamina_regen_rate)
+            
+        # Decrease boost cooldown
+        if self.boost_cooldown > 0:
+            self.boost_cooldown -= 1
+            
+        # Apply boost effect if active
+        if self.boost_active:
+            max_boost_speed = self.entity.max_speed * 1.5
+            self.entity.speed = min(self.entity.speed * 1.2, max_boost_speed)
+            
+        # Cap speed
+        normal_max_speed = self.entity.max_speed
+        if self.boost_active:
+            normal_max_speed *= 1.5
+            
+        self.entity.speed = max(min(self.entity.speed, 
+                                 normal_max_speed), 
+                              -normal_max_speed * 0.6)
+        
+        # Handle weapon firing
+        # Left mouse button - Fire left weapon
+        if mouse_buttons[0] and self.fire_cooldown_left <= 0:
+            self.firing_left = True
+            self.fire_cooldown_left = self.fire_rate
+            # Logic for firing left weapon would go here
+            print("Firing left weapon")
+        else:
+            self.firing_left = False
+            
+        # Right mouse button - Fire right weapon
+        if mouse_buttons[2] and self.fire_cooldown_right <= 0:
+            self.firing_right = True
+            self.fire_cooldown_right = self.fire_rate
+            # Logic for firing right weapon would go here
+            print("Firing right weapon")
+        else:
+            self.firing_right = False
+            
+        # Update cooldowns
+        if self.fire_cooldown_left > 0:
+            self.fire_cooldown_left -= 1
+            
+        if self.fire_cooldown_right > 0:
+            self.fire_cooldown_right -= 1

@@ -200,37 +200,54 @@ class SpriteStack:
         # Create rotation cache to avoid redundant transforms
         rotation_cache = {}
         
+        # Ensure we have all layers loaded
+        if not self.layers:
+            print("Warning: No layers available for sprite stack")
+            return
+            
         # Draw from bottom to top to get correct overlap
         for i in range(len(self.layers)):
-            if i >= len(self.layers) or self.layers[i] is None:
+            layer = self.layers[i]
+            if layer is None:
+                print(f"Warning: Layer {i} is None")
                 continue
                 
             # Cache rotated images to avoid redundant transformations
             if rotation != 0:
                 if i not in rotation_cache:
-                    rotation_cache[i] = transform.rotate(self.layers[i], -rotation)
+                    try:
+                        rotation_cache[i] = pygame.transform.rotate(layer, -rotation)
+                    except Exception as e:
+                        print(f"Error rotating layer {i}: {e}")
+                        continue
                 layer_to_draw = rotation_cache[i]
             else:
-                layer_to_draw = self.layers[i]
-                  # Position with offset for 3D effect and tilt
-            layer_rect = layer_to_draw.get_rect()
+                layer_to_draw = layer
+                
+            # Position with offset for 3D effect and tilt
+            try:
+                layer_rect = layer_to_draw.get_rect()
+                
+                # Calculate horizontal offset based on layer position and tilt amount
+                # Top layers move more than bottom layers for a more dynamic effect
+                layer_factor = i / max(1, len(self.layers) - 1)  # 0 for bottom layer, 1 for top layer
+                horizontal_offset = tilt_amount * layer_factor * 4  # Adjust multiplier for more/less tilt effect
+                
+                # Apply both vertical stacking and horizontal tilt offsets
+                layer_rect.center = (int(x + horizontal_offset), int(y - i * self.layer_offset))
+                
+                # Draw this layer
+                surface.blit(layer_to_draw, layer_rect)
+            except Exception as e:
+                print(f"Error drawing layer {i}: {e}")
+                continue
             
-            # Calculate horizontal offset based on layer position and tilt amount
-            # Top layers move more than bottom layers for a more dynamic effect
-            layer_factor = i / max(1, len(self.layers) - 1)  # 0 for bottom layer, 1 for top layer
-            horizontal_offset = tilt_amount * layer_factor * 4  # Adjust multiplier for more/less tilt effect
-            
-            # Apply both vertical stacking and horizontal tilt offsets
-            layer_rect.center = (int(x + horizontal_offset), int(y - i * self.layer_offset))
-            
-            # Draw this layer
-            surface.blit(layer_to_draw, layer_rect)
-        
-        # Draw outline if enabled        if self.outline_manager.enabled:
+        # Draw outline if enabled
+        if self.outline_manager.enabled:
             self.outline_manager.draw_outline(
-                surface, x, y, rotation, 
-                self.layers, self.width, self.height, 
-                self.num_layers, self.layer_offset,
+                surface, x, y, rotation,
+                self.layers, self.width, self.height,
+                len(self.layers), self.layer_offset,
                 tilt_amount=tilt_amount
             )
     

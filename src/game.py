@@ -188,21 +188,33 @@ class Game:
         
     def _create_cave_walls(self, wall_img_path):
         """Create the walls that form the underwater cave boundary."""
-        wall_spacing = 60  # Spacing between wall segments
+        wall_spacing = 40  # Decreased spacing between wall segments for better coverage
         
-        # Create top and bottom walls
-        for x in range(-self.cave_width//2, self.cave_width//2, wall_spacing):
+        # Add corner pieces first for better cave structure
+        corners = [
+            (-self.cave_width//2, -self.cave_height//2),  # Top left
+            (self.cave_width//2, -self.cave_height//2),   # Top right
+            (-self.cave_width//2, self.cave_height//2),   # Bottom left
+            (self.cave_width//2, self.cave_height//2)     # Bottom right
+        ]
+        
+        for x, y in corners:
+            self._add_wall_segment(x, y, wall_img_path)
+        
+        # Create top and bottom walls with overlap
+        for x in range(-self.cave_width//2 + wall_spacing, self.cave_width//2, wall_spacing):
             # Top wall
             self._add_wall_segment(x, -self.cave_height//2, wall_img_path)
             # Bottom wall
             self._add_wall_segment(x, self.cave_height//2, wall_img_path)
             
-        # Create left and right walls
-        for y in range(-self.cave_height//2, self.cave_height//2, wall_spacing):
+        # Create left and right walls with overlap
+        for y in range(-self.cave_height//2 + wall_spacing, self.cave_height//2, wall_spacing):
             # Left wall
             self._add_wall_segment(-self.cave_width//2, y, wall_img_path)
             # Right wall
             self._add_wall_segment(self.cave_width//2, y, wall_img_path)
+            
     def _add_wall_segment(self, x, y, img_path):
         """Add a single wall segment at the specified position."""
         wall = GameObject(
@@ -215,8 +227,9 @@ class Game:
             height=60,
             outline_enabled=False,
         )
-        self.wall_objects.append(wall)
-        self.world_objects.append(wall)  # Also add to main objects list for rendering
+        if wall not in self.wall_objects:  # Prevent duplicate walls
+            self.wall_objects.append(wall)
+            self.world_objects.append(wall)  # Also add to main objects list for rendering
 
     def _create_default_background(self):
         """Create a deep ocean water background."""
@@ -456,11 +469,12 @@ class Game:
         """
         visible_objects = []
         
-        # Calculate the screen bounds in world coordinates
-        cam_left = self.camera.x - self.camera.width // 2 - 100  # Add margin
-        cam_right = self.camera.x + self.camera.width // 2 + 100
-        cam_top = self.camera.y - self.camera.height // 2 - 100
-        cam_bottom = self.camera.y + self.camera.height // 2 + 100
+        # Calculate the screen bounds in world coordinates with a larger margin
+        margin = 300  # Increased margin to ensure smoother visibility transitions
+        cam_left = self.camera.x - self.camera.width // 2 - margin
+        cam_right = self.camera.x + self.camera.width // 2 + margin
+        cam_top = self.camera.y - self.camera.height // 2 - margin
+        cam_bottom = self.camera.y + self.camera.height // 2 + margin
         
         # Filter objects to only include those in view
         for obj in self.world_objects:

@@ -150,9 +150,9 @@ class Game:
         self.wall_objects = []  # Separate list for wall objects to handle collisions
         
         # Cave dimensions
-        self.cave_width = 1200
-        self.cave_height = 1200
-        self.wall_thickness = 80
+        self.cave_width = 2000  # Slightly larger but optimized
+        self.cave_height = 2000
+        self.wall_thickness = 100
         
         # Use kelp image for underwater vegetation
         kelp_img_path = join(image_path, "kelp.png")
@@ -161,29 +161,35 @@ class Game:
         # Create cave walls (using tree.png as a placeholder for wall texture)
         self._create_cave_walls(tree_img_path)
         
-        # Add kelp inside the cave
-        num_kelp = 40
-        for _ in range(num_kelp):
-            # Place kelp only within the cave boundaries
-            x = random.randint(-self.cave_width//2 + self.wall_thickness, 
-                              self.cave_width//2 - self.wall_thickness)
-            y = random.randint(-self.cave_height//2 + self.wall_thickness, 
-                              self.cave_height//2 - self.wall_thickness)
-            
-            kelp = GameObject(
-                x=x,
-                y=y,
-                image_path=kelp_img_path,
-                num_layers=24,  # kelp.png is 11x8x24
-                layer_offset=1,
-                width=11,
-                height=8,
-                outline_enabled=True,
-                outline_color=(0, 0, 0),
-                outline_thickness=1,
-                individual_offset=1.4,
-            )
-            self.world_objects.append(kelp)
+        # Add kelp inside the cave - optimized distribution
+        kelp_spacing = 200  # Minimum spacing between kelp
+        grid_size = int(self.cave_width / kelp_spacing)
+        
+        for i in range(-grid_size//2, grid_size//2):
+            for j in range(-grid_size//2, grid_size//2):
+                # Add some randomness to the grid positions
+                x = i * kelp_spacing + random.randint(-50, 50)
+                y = j * kelp_spacing + random.randint(-50, 50)
+                
+                # Skip if too close to walls
+                if (abs(x) > self.cave_width//2 - self.wall_thickness - 50 or 
+                    abs(y) > self.cave_height//2 - self.wall_thickness - 50):
+                    continue
+                    
+                kelp = GameObject(
+                    x=x,
+                    y=y,
+                    image_path=kelp_img_path,
+                    num_layers=24,
+                    layer_offset=1,
+                    width=11,
+                    height=8,
+                    outline_enabled=True,
+                    outline_color=(0, 0, 0),
+                    outline_thickness=1,
+                    individual_offset=1.4,
+                )
+                self.world_objects.append(kelp)
         
         # Register all objects with the shadow manager
         self.shadow_manager.register_objects(self.world_objects)
@@ -355,7 +361,13 @@ class Game:
                 (0, y),
                 (self.camera.width, y)
             )
-          # Draw grid lines to show movement
+            
+        # Draw FPS counter
+        fps = int(self.clock.get_fps())
+        fps_surface = self.small_font.render(f"FPS: {fps}", True, (255, 255, 255))
+        camera_surface.blit(fps_surface, (10, 10))
+        
+        # Draw grid lines to show movement
         self._draw_world_grid(camera_surface)
         
         if not self.game_started:

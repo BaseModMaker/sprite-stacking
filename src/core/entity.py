@@ -28,13 +28,13 @@ class Entity(GameObject):
             outline_enabled, outline_color, outline_thickness, individual_offset
         )        
         self.speed = 0
-        self.max_speed = 5
-        self.acceleration = 0.2
+        self.max_speed = 10  # Doubled from 5
+        self.acceleration = 0.4  # Doubled from 0.2
         self.deceleration = 0.1
-        self.friction = 0.95
+        self.friction = 0.98  # Slightly increased from 0.95 for smoother movement
         self.rotation = rotation
         self.base_angle = rotation  # Base angle without tilt effect
-        self.rotation_speed = 3
+        self.rotation_speed = 4  # Slightly increased from 3
         self.direction = 0
         self.controller = None
         

@@ -353,16 +353,10 @@ class Game:
             for obj in visible_objects:
                 # Convert world coordinates to screen coordinates
                 screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)
-                obj.draw_at_position(camera_surface, screen_x, screen_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
-              # Draw the player at the center of the screen
+                obj.draw_at_position(camera_surface, screen_x, screen_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)            # Draw the player at the center of the screen
             center_x = self.camera.width // 2
             center_y = self.camera.height // 2
             self.player.draw_at_position(camera_surface, center_x, center_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
-            
-            # Draw player coordinates for debugging
-            coord_text = f"Position: ({int(self.player.x)}, {int(self.player.y)})"
-            coord_surface = self.small_font.render(coord_text, True, self.WHITE)
-            camera_surface.blit(coord_surface, (10, self.camera.height - 30))
             
             # Draw stamina bar
             if hasattr(self.player_controller, 'stamina') and hasattr(self.player_controller, 'max_stamina'):

@@ -20,8 +20,7 @@ class OutlineManager:
         self.color = color
         self.thickness = thickness
         self.individual_offset = individual_offset
-    
-    def draw_outline(self, surface, x, y, rotation, layers, width, height, num_layers, layer_offset):
+    def draw_outline(self, surface, x, y, rotation, layers, width, height, num_layers, layer_offset, tilt_amount=0):
         """Draw an outline that follows the contour of the sprite-stacked object.
         
         Args:
@@ -34,6 +33,7 @@ class OutlineManager:
             height (int): Height of the sprite
             num_layers (int): Number of layers in the sprite stack
             layer_offset (int): Vertical offset between layers
+            tilt_amount (float): Amount to tilt the layers (-1 to 1, negative = left tilt)
         """
         if not self.enabled:
             return
@@ -68,10 +68,15 @@ class OutlineManager:
                 layer_to_draw = rotation_cache[i]
             else:
                 layer_to_draw = layers[i]
-                
-            # Position with offset for 3D effect
+                  # Position with offset for 3D effect and tilt
             layer_rect = layer_to_draw.get_rect()
-            layer_rect.center = (temp_x, temp_y - i * layer_offset)
+            
+            # Calculate tilt offset based on layer position
+            layer_factor = i / max(1, len(layers) - 1)  # 0 for bottom layer, 1 for top layer
+            tilt_offset = tilt_amount * layer_factor * 4  # Adjust multiplier for more/less tilt effect
+            
+            # Apply both vertical stacking and horizontal tilt offsets
+            layer_rect.center = (temp_x + tilt_offset, temp_y - i * layer_offset)
             
             # Draw this layer to the temporary surface
             temp_surface.blit(layer_to_draw, layer_rect)

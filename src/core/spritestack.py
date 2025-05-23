@@ -177,6 +177,7 @@ class SpriteStack:
             )
             
             self.layers.append(layer)
+            
     def draw(self, surface, x, y, rotation=0, draw_shadow=True, performance_mode=1, tilt_amount=0):
         """Draw the stacked sprite at the specified position.
         
@@ -189,6 +190,9 @@ class SpriteStack:
             performance_mode (int): Optimization level - ignored in this version
             tilt_amount (float): Amount to tilt the layers (-1 to 1, negative = left tilt)
         """
+        # Store original position to restore after drawing tilted layers
+        original_x = x
+        
         # Draw shadow first so it appears behind the sprite
         if draw_shadow and self.shadow_enabled:
             self._draw_shadow(surface, x, y, rotation)
@@ -222,12 +226,12 @@ class SpriteStack:
             # Draw this layer
             surface.blit(layer_to_draw, layer_rect)
         
-        # Draw outline if enabled
-        if self.outline_manager.enabled:
+        # Draw outline if enabled        if self.outline_manager.enabled:
             self.outline_manager.draw_outline(
                 surface, x, y, rotation, 
                 self.layers, self.width, self.height, 
-                self.num_layers, self.layer_offset
+                self.num_layers, self.layer_offset,
+                tilt_amount=tilt_amount
             )
     
     def _draw_shadow(self, surface, x, y, rotation):

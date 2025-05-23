@@ -95,19 +95,17 @@ class Game:
         
         # Create player submarine entity
         submarine_img_path = join(image_path, "yellow-submarine.png")
-        self.player = Entity(
-            x=0,
+        self.player = Entity(            x=0,
             y=0,
             image_path=submarine_img_path,
             num_layers=24,  # yellow-submarine.png is 32x16x24
-            layer_offset=1,
             width=32,
             height=16,
             entity_type="submarine",
             outline_enabled=True,
             outline_color=(0, 0, 0),
             outline_thickness=2,
-            outline_offset=23,
+            outline_offset=11,
             rotation=270,  # Facing up
         )
         self.shadow_manager.register_object(self.player)
@@ -168,21 +166,21 @@ class Game:
         
         # Add kelp inside the cave
         num_kelp = 5  # Slightly reduced to make room for new objects
-        min_spacing = 100
+        min_spacing = 100        
         self._place_objects(kelp_img_path, num_kelp, min_spacing, placed_positions, 
-                          num_layers=16, width=11, height=8, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=2)
+                          num_layers=16, width=11, height=8, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=1)
         
         # Add rocks rock-31x27x26
         num_rocks = 3
         min_rock_spacing = 120  # Larger spacing for rocks
         self._place_objects(rock_img_path, num_rocks, min_rock_spacing, placed_positions,
-                          num_layers=26, width=31, height=27, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=25)
+                          num_layers=26, width=31, height=27, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=12)
         
         # Add clams clam-26x21x3
         num_clams = 5
         min_clam_spacing = 80
         self._place_objects(clam_img_path, num_clams, min_clam_spacing, placed_positions,
-                          num_layers=3, width=26, height=21, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=2)
+                          num_layers=3, width=26, height=21, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=1)
         
         # Register all objects with the shadow manager
         self.shadow_manager.register_objects(self.world_objects)
@@ -257,10 +255,9 @@ class Game:
         """Add a single wall segment at the specified position."""
         wall = GameObject(
             x=x,
-            y=y,
-            image_path=img_path,
+            y=y,            image_path=img_path,
             num_layers=24,
-            layer_offset=1,
+            layer_offset=0.5,
             width=60,
             height=60,
             outline_enabled=False,

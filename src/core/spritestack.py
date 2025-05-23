@@ -14,7 +14,7 @@ class SpriteStack:
     This can be used by any game object that needs sprite stacking visualization.
     """
     
-    def __init__(self, image_path=None, num_layers=8, layer_offset=1, default_width=32, default_height=32, outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1):
+    def __init__(self, image_path=None, num_layers=8, layer_offset=0.5, default_width=32, default_height=32, outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1):
         """Initialize a sprite stack.
         
         Args:

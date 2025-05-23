@@ -4,7 +4,7 @@ from .gameobject import GameObject
 
 class Entity(GameObject):
     """An entity is a game object that can move and has physics properties."""
-    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
+    def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=0.5, width=32, height=32, 
                  entity_type="generic", outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1, rotation=0):
         """Initialize an entity.
         

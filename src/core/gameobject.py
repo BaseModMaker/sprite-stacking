@@ -4,6 +4,7 @@ from .spritestack import SpriteStack
 
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
+    Scale = 2.0  # Default scale for all game objects
     
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
                  outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1):
@@ -29,7 +30,7 @@ class GameObject(sprite.Sprite):
         self.sprite_stack = SpriteStack(
             image_path=image_path, 
             num_layers=num_layers, 
-            layer_offset=layer_offset,
+            layer_offset=layer_offset * self.Scale,
             default_width=width,
             default_height=height,
             outline_enabled=outline_enabled,
@@ -39,8 +40,8 @@ class GameObject(sprite.Sprite):
         )
         
         # Set basic sprite properties for collision detection
-        self.width = self.sprite_stack.width
-        self.height = self.sprite_stack.height
+        self.width = self.sprite_stack.width * self.Scale
+        self.height = self.sprite_stack.height * self.Scale
         self.image = self.sprite_stack.layers[0] if self.sprite_stack.layers else None
         self.rect = pygame.Rect(self.x - self.width//2, self.y - self.height//2, self.width, self.height)
     
@@ -78,13 +79,9 @@ class GameObject(sprite.Sprite):
             performance_mode (int): 0=Low, 1=Medium, 2=High quality rendering
             rotation (float, optional): Override rotation angle, or None to use object's rotation
         """
-        # If this is an Entity with rotation, use that unless overridden
-        actual_rotation = 0
-        if hasattr(self, 'rotation') and rotation is None:
-            actual_rotation = self.rotation
-        elif rotation is not None:
-            actual_rotation = rotation
-            
+        # Calculate the actual rotation to use
+        actual_rotation = rotation if rotation is not None else getattr(self, 'rotation', 0)
+        
         # Get tilt amount from controller if available
         tilt_amount = 0
         if hasattr(self, 'controller') and self.controller:
@@ -96,10 +93,10 @@ class GameObject(sprite.Sprite):
             surface, 
             screen_x, 
             screen_y, 
-            actual_rotation, 
+            actual_rotation,  # Pass the actual rotation angle
             draw_shadow, 
             performance_mode,
-            tilt_amount=tilt_amount  # Pass tilt amount to sprite stack
+            tilt_amount=tilt_amount
         )
     
     def configure_outline(self, enabled=True, color=(255, 0, 0), thickness=2):

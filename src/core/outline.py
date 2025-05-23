@@ -91,10 +91,14 @@ class OutlineManager:
         # Get the outline points - these are the points at the edge of the mask
         outline_points = mask.outline()
         
-        # If we have outline points, draw them
-        if outline_points:
+        # If we have enough outline points, draw them
+        if len(outline_points) >= 3:  # Need at least 3 points for a polygon
             # Draw the outline by connecting the points with lines
             pygame.draw.polygon(outline_surface, self.color, outline_points, self.thickness)
+        elif outline_points:  # If we have at least 2 points
+            # Draw a line between the points
+            pygame.draw.line(outline_surface, self.color, outline_points[0], outline_points[1], self.thickness)
+        # If we have no points, don't draw anything
         
         # Calculate position on the main surface
         # Account for the vertical center of the sprite stack

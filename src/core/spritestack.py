@@ -6,6 +6,8 @@ import sys
 import math
 from .outline import OutlineManager
 
+GLOBAL_SCALE = 2.0  # Match GameObject.Scale
+
 class SpriteStack:
     """
     A class for handling sprite stacking technique rendering.
@@ -51,6 +53,14 @@ class SpriteStack:
         # If still no layers, create default ones
         if not self.layers:
             self._create_default_layers()
+        
+        # Scale all layers
+        if GLOBAL_SCALE != 1.0:
+            for i in range(len(self.layers)):
+                if self.layers[i]:
+                    current_size = self.layers[i].get_size()
+                    new_size = (int(current_size[0] * GLOBAL_SCALE), int(current_size[1] * GLOBAL_SCALE))
+                    self.layers[i] = pygame.transform.scale(self.layers[i], new_size)
         
         # Set dimensions based on the first layer
         self.width = self.layers[0].get_width() if self.layers else default_width

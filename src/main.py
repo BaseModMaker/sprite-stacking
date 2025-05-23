@@ -14,28 +14,34 @@ from game import Game
 
 
 async def main():
+    # Initialize pygame to get display info
+    pygame.init()
+    
     # Setup paths - make them work both locally and on web
     if hasattr(sys, '_emscripten_info'):
         # Web/pygbag environment
         base_dir = "."
         asset_dir = "assets"
         
-        # Use smaller resolution for better performance on web
-        screen_width = 800
-        screen_height = 600
+        # Use current browser window size for web
+        screen_info = pygame.display.Info()
+        screen_width = screen_info.current_w
+        screen_height = screen_info.current_h
     else:
         # Local environment
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         asset_dir = os.path.join(base_dir, "assets")
         
-        # Use higher resolution for desktop
-        screen_width = 1280
-        screen_height = 720
+        # Get the primary display's current resolution
+        screen_info = pygame.display.Info()
+        screen_width = screen_info.current_w
+        screen_height = screen_info.current_h
     
     font_dir = os.path.join(asset_dir, "fonts")
     image_dir = os.path.join(asset_dir, "images")
     sound_dir = os.path.join(asset_dir, "sounds")
     
+    print(f"Screen resolution: {screen_width}x{screen_height}")
     print(f"Asset path: {asset_dir}")
     print(f"Image path: {image_dir}")
     print(f"Font path: {font_dir}")
@@ -47,7 +53,7 @@ async def main():
     game = Game(
         screen_width=screen_width, 
         screen_height=screen_height,
-        fullscreen=False,
+        fullscreen=True,  # Enable fullscreen mode
         asset_path=asset_dir,
         font_path=font_dir,
         image_path=image_dir,

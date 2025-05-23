@@ -107,7 +107,7 @@ class Game:
             outline_enabled=True,
             outline_color=(0, 0, 0),
             outline_thickness=1,
-            individual_offset=0.75,
+            individual_offset=0.72,
             rotation=270,  # Facing up
         )
         self.shadow_manager.register_object(self.player)
@@ -178,7 +178,10 @@ class Game:
                 layer_offset=1,
                 width=11,
                 height=8,
-                outline_enabled=False,  # No outline for natural objects
+                outline_enabled=True,
+                outline_color=(0, 0, 0),
+                outline_thickness=1,
+                individual_offset=1.4,
             )
             self.world_objects.append(kelp)
         
@@ -366,14 +369,18 @@ class Game:
             for obj in visible_objects:
                 # Convert world coordinates to screen coordinates
                 screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)
-                # World objects should NOT be rotated with the camera - let world_to_screen handle rotation
+                
+                # Objects should only rotate based on camera rotation angle
+                # This makes them show different sides as we orbit around them
+                relative_angle = self.camera.rotation
+                
                 obj.draw_at_position(
                     camera_surface, 
                     screen_x, 
                     screen_y, 
                     draw_shadow=self.shadow_manager.enabled, 
                     performance_mode=self.performance_mode,
-                    rotation=0  # Objects keep their natural rotation, camera handles world rotation
+                    rotation=relative_angle
                 )
             
             # Draw the player at the center of the screen

@@ -153,7 +153,7 @@ class Game:
         self.wall_thickness = 80
         
         # Load image paths
-        kelp_img_path = join(image_path, "kelp.png")
+        kelp_img_path = join(image_path, "kelp-6x6x18.png")
         tree_img_path = join(image_path, "tree.png")
         rock_img_path = join(image_path, "rock-31x27x26.png")
         clam_img_path = join(image_path, "clam-26x21x3.png")
@@ -164,11 +164,11 @@ class Game:
         # Track all placed object positions for spacing
         placed_positions = []
         
-        # Add kelp inside the cave
-        num_kelp = 5  # Slightly reduced to make room for new objects
+        # Add kelp inside the cave kelp-6x6x18
+        num_kelp = 5 
         min_spacing = 100        
         self._place_objects(kelp_img_path, num_kelp, min_spacing, placed_positions, 
-                          num_layers=16, width=11, height=8, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=1)
+                          num_layers=18, width=6, height=6, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=8)
         
         # Add rocks rock-31x27x26
         num_rocks = 3

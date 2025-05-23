@@ -288,11 +288,11 @@ class Game:
                 self.game_started = True
                 
             # Game started key handling
-            if self.game_started and e.type == KEYUP:
-                # Cycle performance modes
+            if self.game_started and e.type == KEYUP:                # Cycle performance modes
                 if e.key == pygame.K_p:
                     self.performance_mode = 0  # Always use most optimized performance mode
                     print("Performance mode: High (best quality)")
+    
     def update(self):
         """Update game state."""
         if self.game_started:
@@ -301,6 +301,13 @@ class Game:
             
             # Keep the player within the cave boundaries
             self._keep_player_in_cave()
+            
+            # Check for arrow key inputs to rotate camera around the submarine
+            camera_rotation_speed = 2  # Degrees per frame, adjust for faster/slower rotation
+            if self.keys[pygame.K_LEFT]:
+                self.camera.set_rotation((self.camera.rotation - camera_rotation_speed) % 360)
+            if self.keys[pygame.K_RIGHT]:
+                self.camera.set_rotation((self.camera.rotation + camera_rotation_speed) % 360)
             
             # Update camera to follow player
             self.camera.follow(self.player.x, self.player.y)
@@ -337,8 +344,7 @@ class Game:
                 (0, y),
                 (self.camera.width, y)
             )
-        
-        # Draw grid lines to show movement
+          # Draw grid lines to show movement
         self._draw_world_grid(camera_surface)
         
         if not self.game_started:
@@ -353,10 +359,55 @@ class Game:
             for obj in visible_objects:
                 # Convert world coordinates to screen coordinates
                 screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)
-                obj.draw_at_position(camera_surface, screen_x, screen_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)            # Draw the player at the center of the screen
+                # Apply camera rotation to world objects too
+                # For objects without their own rotation, we use the camera rotation directly
+                obj_rotation = self.camera.rotation
+                if hasattr(obj, 'rotation'):
+                    obj_rotation = (obj.rotation + self.camera.rotation) % 360
+                
+                obj.draw_at_position(
+                    camera_surface, 
+                    screen_x, 
+                    screen_y, 
+                    draw_shadow=self.shadow_manager.enabled, 
+                    performance_mode=self.performance_mode,
+                    rotation=obj_rotation
+                )
+            
+            # Draw the player at the center of the screen
             center_x = self.camera.width // 2
             center_y = self.camera.height // 2
-            self.player.draw_at_position(camera_surface, center_x, center_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
+            
+            # Apply camera rotation to the player's rotation when drawing
+            # To make submarine rotate with camera, we add the camera rotation to the player's rotation
+            combined_rotation = (self.player.rotation + self.camera.rotation) % 360
+            self.player.draw_at_position(
+                camera_surface, 
+                center_x, 
+                center_y, 
+                draw_shadow=self.shadow_manager.enabled, 
+                performance_mode=self.performance_mode,
+                rotation=combined_rotation
+            )
+            combined_rotation = (self.player.rotation + self.camera.rotation) % 360
+            self.player.draw_at_position(
+                camera_surface, 
+                center_x, 
+                center_y, 
+                draw_shadow=self.shadow_manager.enabled, 
+                performance_mode=self.performance_mode,
+                rotation=combined_rotation
+            )
+            # To make submarine rotate with camera, we add the camera rotation to the player's rotation
+            combined_rotation = (self.player.rotation + self.camera.rotation) % 360
+            self.player.draw_at_position(
+                camera_surface, 
+                center_x, 
+                center_y, 
+                draw_shadow=self.shadow_manager.enabled, 
+                performance_mode=self.performance_mode,
+                rotation=combined_rotation
+            )
             
             # Draw stamina bar
             if hasattr(self.player_controller, 'stamina') and hasattr(self.player_controller, 'max_stamina'):

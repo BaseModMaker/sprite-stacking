@@ -137,3 +137,13 @@ class Camera:
         """
         self.rotation = angle % 360
         return self.rotation
+    
+    def move(self, dx, dy):
+        """Manually move the camera by the specified amount.
+        
+        Args:
+            dx (float): Amount to move in x direction
+            dy (float): Amount to move in y direction
+        """
+        self.x += dx
+        self.y += dy

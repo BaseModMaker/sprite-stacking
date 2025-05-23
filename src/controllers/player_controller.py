@@ -19,6 +19,12 @@ class PlayerController:
         self.fire_cooldown_left = 0
         self.fire_cooldown_right = 0
         self.fire_rate = 15  # Frames between shots
+        
+        # Tilt effect properties
+        self.tilt_amount = 0  # Current tilt (-1 for left, 1 for right)
+        self.max_tilt = 1.0  # Maximum tilt value
+        self.tilt_speed = 0.2  # How fast the tilt changes
+        self.layer_offset = 1  # Pixels to offset each layer during tilt
     
     def update(self, keys, *args, **kwargs):
         """Update the entity based on key inputs.
@@ -42,12 +48,24 @@ class PlayerController:
         elif keys[K_s]:
             self.entity.speed -= self.entity.acceleration
             
-        # Handle rotation (Q/D for left/right)
+        # Handle rotation and tilt (Q/D for left/right)
         if keys[K_q]:
+            # Update rotation
             self.entity.rotation = (self.entity.rotation - self.entity.rotation_speed) % 360
-        if keys[K_d]:
+            # Add tilt effect when turning left
+            self.tilt_amount = min(self.max_tilt, self.tilt_amount + self.tilt_speed)
+        elif keys[K_d]:
+            # Update rotation
             self.entity.rotation = (self.entity.rotation + self.entity.rotation_speed) % 360
-            
+            # Add tilt effect when turning right
+            self.tilt_amount = max(-self.max_tilt, self.tilt_amount - self.tilt_speed)
+        else:
+            # Return tilt to center when not turning
+            if self.tilt_amount > 0:
+                self.tilt_amount = max(0, self.tilt_amount - self.tilt_speed)
+            elif self.tilt_amount < 0:
+                self.tilt_amount = min(0, self.tilt_amount + self.tilt_speed)
+        
         # Boost (Spacebar)
         if keys[K_SPACE] and self.stamina > 0 and self.boost_cooldown <= 0:
             self.boost_active = True

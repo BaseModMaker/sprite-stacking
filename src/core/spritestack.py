@@ -177,8 +177,7 @@ class SpriteStack:
             )
             
             self.layers.append(layer)
-    
-    def draw(self, surface, x, y, rotation=0, draw_shadow=True, performance_mode=1):
+    def draw(self, surface, x, y, rotation=0, draw_shadow=True, performance_mode=1, tilt_amount=0):
         """Draw the stacked sprite at the specified position.
         
         Args:
@@ -188,6 +187,7 @@ class SpriteStack:
             rotation (float): Rotation angle in degrees
             draw_shadow (bool): Whether to draw a shadow
             performance_mode (int): Optimization level - ignored in this version
+            tilt_amount (float): Amount to tilt the layers (-1 to 1, negative = left tilt)
         """
         # Draw shadow first so it appears behind the sprite
         if draw_shadow and self.shadow_enabled:
@@ -208,10 +208,16 @@ class SpriteStack:
                 layer_to_draw = rotation_cache[i]
             else:
                 layer_to_draw = self.layers[i]
-                
-            # Position with offset for 3D effect
+                  # Position with offset for 3D effect and tilt
             layer_rect = layer_to_draw.get_rect()
-            layer_rect.center = (int(x), int(y - i * self.layer_offset))
+            
+            # Calculate horizontal offset based on layer position and tilt amount
+            # Top layers move more than bottom layers for a more dynamic effect
+            layer_factor = i / max(1, len(self.layers) - 1)  # 0 for bottom layer, 1 for top layer
+            horizontal_offset = tilt_amount * layer_factor * 4  # Adjust multiplier for more/less tilt effect
+            
+            # Apply both vertical stacking and horizontal tilt offsets
+            layer_rect.center = (int(x + horizontal_offset), int(y - i * self.layer_offset))
             
             # Draw this layer
             surface.blit(layer_to_draw, layer_rect)

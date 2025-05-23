@@ -26,13 +26,14 @@ class Entity(GameObject):
         super().__init__(
             x, y, image_path, num_layers, layer_offset, width, height, 
             outline_enabled, outline_color, outline_thickness, individual_offset
-        )
+        )        
         self.speed = 0
         self.max_speed = 5
         self.acceleration = 0.2
         self.deceleration = 0.1
         self.friction = 0.95
         self.rotation = rotation
+        self.base_angle = rotation  # Base angle without tilt effect
         self.rotation_speed = 3
         self.direction = 0
         self.controller = None

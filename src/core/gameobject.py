@@ -64,7 +64,6 @@ class GameObject(sprite.Sprite):
         """
         # Draw using sprite stack, passing along the performance mode
         self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow, performance_mode)
-    
     def draw_at_position(self, surface, screen_x, screen_y, draw_shadow=True, performance_mode=0, rotation=None):
         """Draw the game object on the given surface at the specified screen position.
         
@@ -86,6 +85,12 @@ class GameObject(sprite.Sprite):
         elif rotation is not None:
             actual_rotation = rotation
             
+        # Get tilt amount from controller if available
+        tilt_amount = 0
+        if hasattr(self, 'controller') and self.controller:
+            if hasattr(self.controller, 'tilt_amount'):
+                tilt_amount = self.controller.tilt_amount
+            
         # Draw using sprite stack at the specified position
         self.sprite_stack.draw(
             surface, 
@@ -93,7 +98,8 @@ class GameObject(sprite.Sprite):
             screen_y, 
             actual_rotation, 
             draw_shadow, 
-            performance_mode
+            performance_mode,
+            tilt_amount=tilt_amount  # Pass tilt amount to sprite stack
         )
     
     def configure_outline(self, enabled=True, color=(255, 0, 0), thickness=2):

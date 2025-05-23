@@ -106,8 +106,8 @@ class Game:
             entity_type="submarine",
             outline_enabled=True,
             outline_color=(0, 0, 0),
-            outline_thickness=1,
-            individual_offset=0.72,
+            outline_thickness=2,
+            outline_offset=23,
             rotation=270,  # Facing up
         )
         self.shadow_manager.register_object(self.player)
@@ -145,51 +145,81 @@ class Game:
             self.start_text = Text(None, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
 
     def _create_dungeon_objects(self, image_path):
-        """Create an underwater cave environment with walls and kelp."""
+        """Create an underwater cave environment with walls, kelp, rocks and clams."""
         self.world_objects = []
         self.wall_objects = []  # Separate list for wall objects to handle collisions
         
-        # Cave dimensions
-        self.cave_width = 2000  # Slightly larger but optimized
-        self.cave_height = 2000
-        self.wall_thickness = 100
+        # Cave dimensions - reduced for better performance
+        self.cave_width = 1600
+        self.cave_height = 1600
+        self.wall_thickness = 80
         
-        # Use kelp image for underwater vegetation
+        # Load image paths
         kelp_img_path = join(image_path, "kelp.png")
-        tree_img_path = join(image_path, "tree.png")  # We'll use the tree image for walls
+        tree_img_path = join(image_path, "tree.png")
+        rock_img_path = join(image_path, "rock-31x27x26.png")
+        clam_img_path = join(image_path, "clam-26x21x3.png")
         
-        # Create cave walls (using tree.png as a placeholder for wall texture)
+        # Create cave walls
         self._create_cave_walls(tree_img_path)
         
-        # Add kelp inside the cave - optimized distribution
-        kelp_spacing = 200  # Minimum spacing between kelp
-        grid_size = int(self.cave_width / kelp_spacing)
+        # Track all placed object positions for spacing
+        placed_positions = []
         
-        for i in range(-grid_size//2, grid_size//2):
-            for j in range(-grid_size//2, grid_size//2):
-                # Add some randomness to the grid positions
-                x = i * kelp_spacing + random.randint(-50, 50)
-                y = j * kelp_spacing + random.randint(-50, 50)
+        # Add kelp inside the cave
+        num_kelp = 5  # Slightly reduced to make room for new objects
+        min_spacing = 100
+        self._place_objects(kelp_img_path, num_kelp, min_spacing, placed_positions, 
+                          num_layers=16, width=11, height=8, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=2)
+        
+        # Add rocks rock-31x27x26
+        num_rocks = 3
+        min_rock_spacing = 120  # Larger spacing for rocks
+        self._place_objects(rock_img_path, num_rocks, min_rock_spacing, placed_positions,
+                          num_layers=26, width=31, height=27, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=25)
+        
+        # Add clams clam-26x21x3
+        num_clams = 5
+        min_clam_spacing = 80
+        self._place_objects(clam_img_path, num_clams, min_clam_spacing, placed_positions,
+                          num_layers=3, width=26, height=21, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=2)
+        
+        # Register all objects with the shadow manager
+        self.shadow_manager.register_objects(self.world_objects)
+        self.shadow_manager.register_objects(self.wall_objects)
+        
+    def _place_objects(self, img_path, num_objects, min_spacing, placed_positions, num_layers, width, height, outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1):
+        """Helper method to place objects in the cave with proper spacing."""
+        for _ in range(num_objects):
+            for attempt in range(10):  # Limit placement attempts
+                x = random.randint(-self.cave_width//2 + self.wall_thickness + 50, 
+                                 self.cave_width//2 - self.wall_thickness - 50)
+                y = random.randint(-self.cave_height//2 + self.wall_thickness + 50, 
+                                 self.cave_height//2 - self.wall_thickness - 50)
                 
-                # Skip if too close to walls
-                if (abs(x) > self.cave_width//2 - self.wall_thickness - 50 or 
-                    abs(y) > self.cave_height//2 - self.wall_thickness - 50):
-                    continue
-                    
-                kelp = GameObject(
-                    x=x,
-                    y=y,
-                    image_path=kelp_img_path,
-                    num_layers=24,
-                    layer_offset=1,
-                    width=11,
-                    height=8,
-                    outline_enabled=True,
-                    outline_color=(0, 0, 0),
-                    outline_thickness=1,
-                    individual_offset=1.4,
-                )
-                self.world_objects.append(kelp)
+                # Check if position is far enough from other objects
+                too_close = False
+                for px, py in placed_positions:
+                    if abs(x - px) < min_spacing and abs(y - py) < min_spacing:
+                        too_close = True
+                        break
+                
+                if not too_close:
+                    placed_positions.append((x, y))
+                    obj = GameObject(
+                        x=x,
+                        y=y,
+                        image_path=img_path,
+                        num_layers=num_layers,
+                        width=width,
+                        height=height,
+                        outline_enabled=outline_enabled,
+                        outline_color=outline_color,
+                        outline_thickness=outline_thickness,
+                        outline_offset=outline_offset,
+                    )
+                    self.world_objects.append(obj)
+                    break
         
         # Register all objects with the shadow manager
         self.shadow_manager.register_objects(self.world_objects)
@@ -197,27 +227,26 @@ class Game:
         
     def _create_cave_walls(self, wall_img_path):
         """Create the walls that form the underwater cave boundary."""
-        wall_spacing = 40  # Decreased spacing between wall segments for better coverage
+        wall_spacing = 80  # Increased spacing between wall segments
         
         # Add corner pieces first for better cave structure
         corners = [
-            (-self.cave_width//2, -self.cave_height//2),  # Top left
-            (self.cave_width//2, -self.cave_height//2),   # Top right
-            (-self.cave_width//2, self.cave_height//2),   # Bottom left
-            (self.cave_width//2, self.cave_height//2)     # Bottom right
+            (-self.cave_width//2, -self.cave_height//2),
+            (self.cave_width//2, -self.cave_height//2),
+            (-self.cave_width//2, self.cave_height//2),
+            (self.cave_width//2, self.cave_height//2)
         ]
         
         for x, y in corners:
             self._add_wall_segment(x, y, wall_img_path)
         
-        # Create top and bottom walls with overlap
+        # Create walls with larger spacing
         for x in range(-self.cave_width//2 + wall_spacing, self.cave_width//2, wall_spacing):
             # Top wall
             self._add_wall_segment(x, -self.cave_height//2, wall_img_path)
             # Bottom wall
             self._add_wall_segment(x, self.cave_height//2, wall_img_path)
             
-        # Create left and right walls with overlap
         for y in range(-self.cave_height//2 + wall_spacing, self.cave_height//2, wall_spacing):
             # Left wall
             self._add_wall_segment(-self.cave_width//2, y, wall_img_path)
@@ -481,23 +510,29 @@ class Game:
         surface.blit(grid_surface, (0, 0))
     
     def _get_visible_objects(self):
-        """Get only objects that are currently visible on the screen.
-        
-        Returns:
-            list: List of visible game objects
-        """
+        """Get only objects that are currently visible on the screen."""
         visible_objects = []
         
-        # Calculate the screen bounds in world coordinates with a larger margin
-        margin = 300  # Increased margin to ensure smoother visibility transitions
+        # Calculate the screen bounds in world coordinates
+        margin = 200  # Reduced margin but still enough for smooth transitions
         cam_left = self.camera.x - self.camera.width // 2 - margin
         cam_right = self.camera.x + self.camera.width // 2 + margin
         cam_top = self.camera.y - self.camera.height // 2 - margin
         cam_bottom = self.camera.y + self.camera.height // 2 + margin
         
-        # Filter objects to only include those in view
+        # Use squared distance for faster calculation
+        max_render_distance_sq = (self.camera.width + margin) * (self.camera.width + margin)
+        
+        # Filter objects to include only those in view and within render distance
+        camera_pos = (self.camera.x, self.camera.y)
         for obj in self.world_objects:
-            if (cam_left <= obj.x <= cam_right and cam_top <= obj.y <= cam_bottom):
+            dx = obj.x - camera_pos[0]
+            dy = obj.y - camera_pos[1]
+            distance_sq = dx * dx + dy * dy
+            
+            if (distance_sq <= max_render_distance_sq and
+                cam_left <= obj.x <= cam_right and 
+                cam_top <= obj.y <= cam_bottom):
                 visible_objects.append(obj)
                 
         return visible_objects

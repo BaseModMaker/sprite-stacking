@@ -5,7 +5,7 @@ from .gameobject import GameObject
 class Entity(GameObject):
     """An entity is a game object that can move and has physics properties."""
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 entity_type="generic", outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1, rotation=0):
+                 entity_type="generic", outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1, rotation=0):
         """Initialize an entity.
         
         Args:
@@ -25,7 +25,7 @@ class Entity(GameObject):
         """
         super().__init__(
             x, y, image_path, num_layers, layer_offset, width, height, 
-            outline_enabled, outline_color, outline_thickness, individual_offset
+            outline_enabled, outline_color, outline_thickness, outline_offset
         )        
         self.speed = 0
         self.max_speed = 10  # Doubled from 5

@@ -7,7 +7,7 @@ class GameObject(sprite.Sprite):
     Scale = 2.0  # Default scale for all game objects
     
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1):
+                 outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1):
         """Initialize a game object.
         
         Args:
@@ -15,7 +15,7 @@ class GameObject(sprite.Sprite):
             y (int): The y position of the object
             image_path (str): Path to the sprite image
             num_layers (int): Number of layers for sprite stacking
-            layer_offset (int): Vertical offset between layers
+            outline_offset (int): Vertical offset of outline
             width (int): Width of the object if no image is provided
             height (int): Height of the object if no image is provided
             outline_enabled (bool): Whether to draw an outline around the object
@@ -36,7 +36,7 @@ class GameObject(sprite.Sprite):
             outline_enabled=outline_enabled,
             outline_color=outline_color,
             outline_thickness=outline_thickness,
-            individual_offset=individual_offset
+            outline_offset=outline_offset
         )
         
         # Set basic sprite properties for collision detection

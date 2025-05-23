@@ -5,8 +5,9 @@ class PlayerController:
     def __init__(self):
         """Initialize a new submarine controller."""
         self.entity = None
-        self.direction_offset = 270
+        self.direction_offset = 180
         self.boost_active = False
+        self.previous_boost_active = False  # Track previous frame's boost state
         self.boost_cooldown = 0
         self.max_boost_cooldown = 60  # Frames
         self.max_stamina = 100
@@ -104,3 +105,14 @@ class PlayerController:
             
         if self.fire_cooldown_right > 0:
             self.fire_cooldown_right -= 1
+            
+        # Update previous boost state for next frame
+        self.previous_boost_active = self.boost_active
+    
+    def boost_just_started(self):
+        """Check if boost just started this frame.
+        
+        Returns:
+            bool: True if boost just started, False otherwise
+        """
+        return self.boost_active and not self.previous_boost_active

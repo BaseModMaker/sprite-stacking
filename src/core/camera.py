@@ -24,24 +24,38 @@ class Camera:
         
         # Camera rotation (in degrees, 0 = no rotation)
         self.rotation = 0
-        
-        # Camera smoothing (lower = smoother)
+          # Camera smoothing (lower = smoother)
         self.smoothing = 0.1
         
         # Create a surface for rendering the camera view
         self.surface = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
         
-    def follow(self, target_x, target_y):
-        """Make the camera follow a target position with smoothing.
+    def follow(self, target_x, target_y, target_rotation=None):
+        """Make the camera follow a target position, keeping it centered.
         
         Args:
             target_x (float): X position to follow in world coordinates
             target_y (float): Y position to follow in world coordinates
+            target_rotation (float, optional): Target rotation in degrees for camera alignment
         """
-        # Apply smoothing to camera movement
-        self.x += (target_x - self.x) * self.smoothing
-        self.y += (target_y - self.y) * self.smoothing
-        
+        if target_rotation is not None:
+            # Calculate the camera offset to stay behind the submarine
+            offset_distance = 0  # No offset needed as we want submarine in center
+              # Convert target's rotation to radians
+            rad_angle = math.radians(target_rotation)
+            
+            # Smoothly move camera to target position
+            self.x += (target_x - self.x) * self.smoothing
+            self.y += (target_y - self.y) * self.smoothing
+            
+            # Set camera rotation to counter-rotate the world
+            # This makes the submarine appear stationary while the world rotates
+            self.rotation = (-target_rotation) % 360
+        else:
+            # Fallback: just follow position without rotation
+            self.x += (target_x - self.x) * self.smoothing
+            self.y += (target_y - self.y) * self.smoothing
+    
     def world_to_screen(self, world_x, world_y):
         """Convert world coordinates to screen coordinates.
         
@@ -147,3 +161,4 @@ class Camera:
         """
         self.x += dx
         self.y += dy
+      

@@ -15,7 +15,7 @@ class Sun:
         """
         self.horizontal_angle = horizontal_angle  # 0-360 degrees (compass direction)
         self.vertical_angle = vertical_angle      # 0-90 degrees (height in sky)
-        self.debug_enabled = False                # Whether to show sun debug info
+        self.debug_enabled = False                # Debug always disabled
     
     def adjust_horizontal_angle(self, delta):
         """Adjust the horizontal angle of the sun.
@@ -36,9 +36,8 @@ class Sun:
         return self.vertical_angle
     
     def toggle_debug(self):
-        """Toggle the debug display for the sun."""
-        self.debug_enabled = not self.debug_enabled
-        return self.debug_enabled
+        """Debug toggle is disabled."""
+        return False
         
     def draw(self, surface, screen_width, screen_height):
         """Draw a visual representation of the sun on the screen.
@@ -95,32 +94,6 @@ class Sun:
         pygame.draw.line(surface, (255, 255, 0, 128), (int(x), int(y)), (center_x, center_y), 2)
     
     def draw_debug_info(self, surface, small_font, white_color, y_start=10):
-        """Draw debug information about the sun's configuration.
-        
-        Args:
-            surface: Surface to draw on
-            small_font: Font to use for debug text
-            white_color: Color to use for text (usually white)
-            y_start (int): Starting Y position for debug text
-        """
-        if not self.debug_enabled:
-            # Just show a hint about debug mode
-            help_surface = small_font.render("Press V to show debug info", True, white_color)
-            surface.blit(help_surface, (10, y_start))
-            return
-            
-        # Draw sun settings and controls
-        help_texts = [
-            f"Sun: H angle: {self.horizontal_angle}°, V angle: {self.vertical_angle}°",
-            "Q/D: Decrease/Increase horizontal angle",
-            "Z/S: Decrease/Increase vertical angle",
-            "X: Toggle shadows on/off",
-            "V: Toggle debug info"
-        ]
-        
-        # Draw each line of help text
-        y_pos = y_start
-        for text in help_texts:
-            help_surface = small_font.render(text, True, white_color)
-            surface.blit(help_surface, (10, y_pos))
-            y_pos += 25
+        """Debug information is disabled."""
+        # No debug info shown
+        return

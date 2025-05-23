@@ -43,6 +43,6 @@ class ShadowManager:
                 )
                 
     def toggle_shadows(self):
-        """Toggle whether shadows are enabled."""
-        self.enabled = not self.enabled
-        return self.enabled
+        """Toggle functionality is disabled, shadows are always enabled."""
+        self.enabled = True
+        return True

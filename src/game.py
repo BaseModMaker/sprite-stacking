@@ -60,18 +60,16 @@ class Game:
         self.asset_path = asset_path
         self.font_path = font_path
         self.image_path = image_path
-        
-        # Define colors
+          # Define colors
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
-        self.YELLOW = (255, 255, 0)  # Color for sun visualization
         
         # Always use most optimized performance mode (0)
         self.performance_mode = 0
         
-        # Initialize sun and shadow management
-        self.sun = Sun(horizontal_angle=45, vertical_angle=45)
-        self.shadow_manager = ShadowManager(enabled=True)
+        # Initialize sun and shadow management with fixed settings
+        self.sun = Sun(horizontal_angle=135, vertical_angle=45)  # Fixed sun position
+        self.shadow_manager = ShadowManager(enabled=True)  # Shadows always enabled
         
         # Load background
         background_path = join(image_path, "background.jpg")
@@ -112,14 +110,14 @@ class Game:
             individual_offset=0.75,
         )
         self.shadow_manager.register_object(self.player)
-        
-        # Create and assign a player controller to the player
+          # Create and assign a player controller to the player
         self.player_controller = PlayerController()
         self.player.set_controller(self.player_controller)
         
         # Remove car/tree/road logic and create dungeon objects
         self._create_dungeon_objects(image_path)
-          # Apply initial shadow settings to all objects
+        
+        # Apply initial shadow settings to all objects
         self.shadow_manager.update_all(self.sun)
         
         # Setup text and UI elements - with proper positioning for different screen sizes
@@ -258,7 +256,7 @@ class Game:
                 )
                 
             self.background.blit(ray_surface, (start_x, 0))
-
+            
     def handle_events(self):
         """Process input events."""
         self.keys = pygame.key.get_pressed()
@@ -271,35 +269,10 @@ class Game:
             if not self.game_started and e.type == KEYUP:
                 self.game_started = True
                 
-            # Handle shadow control keys when game is started
+            # Game started key handling
             if self.game_started and e.type == KEYUP:
-                # Adjust horizontal angle using Q and D (European layout)
-                # Fixed direction: Q = increase angle (clockwise), D = decrease angle (counter-clockwise)
-                if e.key == pygame.K_q:
-                    self.sun.adjust_horizontal_angle(10)
-                    self.shadow_manager.update_all(self.sun)
-                elif e.key == pygame.K_d:
-                    self.sun.adjust_horizontal_angle(-10)
-                    self.shadow_manager.update_all(self.sun)
-                # Adjust vertical angle using Z and S (European layout)
-                # Fixed direction: Z = increase angle (sun higher), S = decrease angle (sun lower)
-                elif e.key == pygame.K_z:
-                    self.sun.adjust_vertical_angle(10)
-                    self.shadow_manager.update_all(self.sun)
-                elif e.key == pygame.K_s:
-                    self.sun.adjust_vertical_angle(-10)
-                    self.shadow_manager.update_all(self.sun)
-                # Toggle sun debug display
-                elif e.key == pygame.K_v:
-                    self.sun.toggle_debug()
-                    print(f"Sun debug: {'on' if self.sun.debug_enabled else 'off'}")
-                # Toggle shadows on/off
-                elif e.key == pygame.K_x:
-                    enabled = self.shadow_manager.toggle_shadows()
-                    print(f"Shadows: {'enabled' if enabled else 'disabled'}")
-                    self.shadow_manager.update_all(self.sun)
                 # Cycle performance modes
-                elif e.key == pygame.K_p:
+                if e.key == pygame.K_p:
                     self.performance_mode = 0  # Always use most optimized performance mode
                     print("Performance mode: High (best quality)")
     
@@ -362,19 +335,11 @@ class Game:
                 # Convert world coordinates to screen coordinates
                 screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)
                 obj.draw_at_position(camera_surface, screen_x, screen_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
-            
-            # Draw the player at the center of the screen
+              # Draw the player at the center of the screen
             center_x = self.camera.width // 2
             center_y = self.camera.height // 2
             self.player.draw_at_position(camera_surface, center_x, center_y, draw_shadow=self.shadow_manager.enabled, performance_mode=self.performance_mode)
             
-            # Draw shadow configuration help text and sun
-            self.sun.draw_debug_info(camera_surface, self.small_font, self.WHITE)
-            
-            # Draw sun visualization if debug is enabled
-            if self.sun.debug_enabled:
-                self.sun.draw(camera_surface, self.camera.width, self.camera.height)
-                
             # Draw player coordinates for debugging
             coord_text = f"Position: ({int(self.player.x)}, {int(self.player.y)})"
             coord_surface = self.small_font.render(coord_text, True, self.WHITE)

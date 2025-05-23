@@ -2,11 +2,10 @@ from pygame import K_z, K_q, K_s, K_d, K_SPACE, MOUSEBUTTONDOWN
 
 class PlayerController:
     """Controller for submarine player entities in Abyssal Gears."""
-    
     def __init__(self):
         """Initialize a new submarine controller."""
         self.entity = None
-        self.direction_offset = 180  # Offset angle to make submarine face the direction of movement
+        self.direction_offset = 270
         self.boost_active = False
         self.boost_cooldown = 0
         self.max_boost_cooldown = 60  # Frames

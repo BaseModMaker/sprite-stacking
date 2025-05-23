@@ -108,6 +108,7 @@ class Game:
             outline_color=(0, 0, 0),
             outline_thickness=1,
             individual_offset=0.75,
+            rotation=270,  # Facing up
         )
         self.shadow_manager.register_object(self.player)
           # Create and assign a player controller to the player
@@ -137,24 +138,38 @@ class Game:
                 print(f"Font file not found, using system font")
                 raise FileNotFoundError("Font file not found")
         except Exception as e:
-            print(f"Error loading fonts: {e}")
-            # Create fallback text using system font
+            print(f"Error loading fonts: {e}")            # Create fallback text using system font
             self.font = pygame.font.SysFont(None, 36)
             self.small_font = pygame.font.SysFont(None, 24)
             self.title_text = Text(None, 50, "Abyssal Gears: Depths of Iron and Steam", self.WHITE, text_x, text_y)
             self.start_text = Text(None, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
 
     def _create_dungeon_objects(self, image_path):
-        """Create underwater kelp for the game environment."""
+        """Create an underwater cave environment with walls and kelp."""
         self.world_objects = []
+        self.wall_objects = []  # Separate list for wall objects to handle collisions
+        
+        # Cave dimensions
+        self.cave_width = 1200
+        self.cave_height = 1200
+        self.wall_thickness = 80
+        
         # Use kelp image for underwater vegetation
         kelp_img_path = join(image_path, "kelp.png")
-        grid_size = 2000
-        num_kelp = 50  # More kelp for a denser underwater feel
+        tree_img_path = join(image_path, "tree.png")  # We'll use the tree image for walls
         
+        # Create cave walls (using tree.png as a placeholder for wall texture)
+        self._create_cave_walls(tree_img_path)
+        
+        # Add kelp inside the cave
+        num_kelp = 40
         for _ in range(num_kelp):
-            x = random.randint(-grid_size//2, grid_size//2)
-            y = random.randint(-grid_size//2, grid_size//2)
+            # Place kelp only within the cave boundaries
+            x = random.randint(-self.cave_width//2 + self.wall_thickness, 
+                              self.cave_width//2 - self.wall_thickness)
+            y = random.randint(-self.cave_height//2 + self.wall_thickness, 
+                              self.cave_height//2 - self.wall_thickness)
+            
             kelp = GameObject(
                 x=x,
                 y=y,
@@ -167,38 +182,41 @@ class Game:
             )
             self.world_objects.append(kelp)
         
+        # Register all objects with the shadow manager
         self.shadow_manager.register_objects(self.world_objects)
-
-    def _generate_world_chunk(self, center_x, center_y, size=2000, num_objects=20):
-        """Generate a new chunk of kelp as the player explores."""
-        kelp_img_path = join(self.image_path, "kelp.png")
-        new_objects = []
+        self.shadow_manager.register_objects(self.wall_objects)
         
-        min_x = center_x - size//2
-        max_x = center_x + size//2
-        min_y = center_y - size//2
-        max_y = center_y + size//2
+    def _create_cave_walls(self, wall_img_path):
+        """Create the walls that form the underwater cave boundary."""
+        wall_spacing = 60  # Spacing between wall segments
         
-        for _ in range(num_objects):
-            x = random.randint(min_x, max_x)
-            y = random.randint(min_y, max_y)
+        # Create top and bottom walls
+        for x in range(-self.cave_width//2, self.cave_width//2, wall_spacing):
+            # Top wall
+            self._add_wall_segment(x, -self.cave_height//2, wall_img_path)
+            # Bottom wall
+            self._add_wall_segment(x, self.cave_height//2, wall_img_path)
             
-            kelp = GameObject(
-                x=x,
-                y=y,
-                image_path=kelp_img_path,
-                num_layers=24,
-                layer_offset=1,
-                width=11,
-                height=8,
-                outline_enabled=False,
-            )
-            
-            new_objects.append(kelp)
-            self.world_objects.append(kelp)
-            
-        self.shadow_manager.register_objects(new_objects)
-        return new_objects
+        # Create left and right walls
+        for y in range(-self.cave_height//2, self.cave_height//2, wall_spacing):
+            # Left wall
+            self._add_wall_segment(-self.cave_width//2, y, wall_img_path)
+            # Right wall
+            self._add_wall_segment(self.cave_width//2, y, wall_img_path)
+    def _add_wall_segment(self, x, y, img_path):
+        """Add a single wall segment at the specified position."""
+        wall = GameObject(
+            x=x,
+            y=y,
+            image_path=img_path,
+            num_layers=24,
+            layer_offset=1,
+            width=60,
+            height=60,
+            outline_enabled=False,
+        )
+        self.wall_objects.append(wall)
+        self.world_objects.append(wall)  # Also add to main objects list for rendering
 
     def _create_default_background(self):
         """Create a deep ocean water background."""
@@ -275,29 +293,30 @@ class Game:
                 if e.key == pygame.K_p:
                     self.performance_mode = 0  # Always use most optimized performance mode
                     print("Performance mode: High (best quality)")
-    
     def update(self):
         """Update game state."""
         if self.game_started:
             # Update the player entity
             self.player.update(self.keys)
             
+            # Keep the player within the cave boundaries
+            self._keep_player_in_cave()
+            
             # Update camera to follow player
             self.camera.follow(self.player.x, self.player.y)
-            
-            # Check if we need to generate new world chunks
-            player_chunk_x = int(self.player.x // 2000) * 2000
-            player_chunk_y = int(self.player.y // 2000) * 2000
-            
-            # Store last chunk center to check if we've moved to a new chunk
-            if not hasattr(self, 'last_chunk_center'):
-                self.last_chunk_center = (player_chunk_x, player_chunk_y)
-                
-            # If we've moved to a new chunk, generate new content
-            if (player_chunk_x, player_chunk_y) != self.last_chunk_center:
-                self._generate_world_chunk(player_chunk_x, player_chunk_y)
-                self.last_chunk_center = (player_chunk_x, player_chunk_y)
-                print(f"Generated new chunk at {player_chunk_x}, {player_chunk_y}")
+    
+    def _keep_player_in_cave(self):
+        """Keep the player within the cave boundaries."""
+        # Calculate the boundaries with a buffer to prevent going through walls
+        buffer = 30  # Buffer space to prevent getting too close to walls
+        min_x = -self.cave_width // 2 + self.wall_thickness + buffer
+        max_x = self.cave_width // 2 - self.wall_thickness - buffer
+        min_y = -self.cave_height // 2 + self.wall_thickness + buffer
+        max_y = self.cave_height // 2 - self.wall_thickness - buffer
+        
+        # Constrain player position
+        self.player.x = max(min_x, min(self.player.x, max_x))
+        self.player.y = max(min_y, min(self.player.y, max_y))
     
     def draw(self):
         """Draw everything to the screen."""

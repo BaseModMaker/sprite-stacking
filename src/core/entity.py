@@ -4,9 +4,8 @@ from .gameobject import GameObject
 
 class Entity(GameObject):
     """An entity is a game object that can move and has physics properties."""
-    
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=1, width=32, height=32, 
-                 entity_type="generic", outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1):
+                 entity_type="generic", outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, individual_offset=1, rotation=0):
         """Initialize an entity.
         
         Args:
@@ -21,6 +20,8 @@ class Entity(GameObject):
             outline_enabled (bool): Whether to draw an outline around the entity
             outline_color (tuple): RGB color tuple for the outline
             outline_thickness (int): Thickness of the outline in pixels
+            individual_offset (float): Offset for individual outlines
+            rotation (float): Initial rotation angle in degrees
         """
         super().__init__(
             x, y, image_path, num_layers, layer_offset, width, height, 
@@ -31,11 +32,10 @@ class Entity(GameObject):
         self.acceleration = 0.2
         self.deceleration = 0.1
         self.friction = 0.95
-        self.rotation = 0
+        self.rotation = rotation
         self.rotation_speed = 3
         self.direction = 0
         self.controller = None
-        self.rotation = 0
         
         # If we have a special type and no image was loaded successfully, customize the sprite stack
         if entity_type == "car" and len(self.sprite_stack.layers) == 0:

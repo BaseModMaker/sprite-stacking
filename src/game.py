@@ -1,5 +1,5 @@
 import pygame
-from pygame import mixer, time, display, image, event, KEYUP, QUIT, K_ESCAPE, Surface, mouse
+from pygame import mixer, time, display, image, Surface, K_z, K_q, K_s, K_d, K_SPACE, K_ESCAPE, K_p, KEYUP, QUIT, K_w, K_a
 from os.path import join, exists
 import asyncio
 import sys
@@ -15,6 +15,106 @@ from controllers.player_controller import PlayerController
 from core.sun import Sun
 from core.shadow import ShadowManager
 from core.camera import Camera
+
+
+class InputState:
+    """Represents the current state of all inputs."""
+    
+    def __init__(self):
+        # Movement keys
+        self.forward = False  # K_z
+        self.backward = False  # K_s
+        self.turn_left = False  # K_q
+        self.turn_right = False  # K_d
+        self.boost_teleport = False  # K_SPACE
+        
+        # System keys
+        self.escape = False  # K_ESCAPE
+        self.performance_toggle = False  # K_p
+        
+        # Mouse buttons
+        self.left_mouse = False  # Fire left cannon
+        self.right_mouse = False  # Fire right cannon
+        self.middle_mouse = False
+        
+        # Special states
+        self.any_key_pressed = False  # For starting the game
+        self.quit_requested = False
+
+
+class InputHandler:
+    """Handles all input processing and converts pygame inputs to game states."""
+    
+    def __init__(self):
+        self.current_state = InputState()
+        self.previous_state = InputState()
+        # Detect if we're running in web environment
+        self.is_web = hasattr(sys, '_emscripten_info')
+        
+    def update(self):
+        """Update input states based on current pygame state."""
+        # Store previous state
+        self._copy_state(self.current_state, self.previous_state)
+        
+        # Get current key states
+        keys = pygame.key.get_pressed()
+        mouse_buttons = pygame.mouse.get_pressed()
+        
+        # Update movement keys with web compatibility
+        if self.is_web:
+            # For web, QSDZ on AZERTY appears as WASD on QWERTY
+            # So we need to map WASD to our game controls
+            self.current_state.forward = keys[K_w]     # W maps to Z (forward)
+            self.current_state.backward = keys[K_s]    # S stays S (backward) 
+            self.current_state.turn_left = keys[K_a]   # A maps to Q (turn left)
+            self.current_state.turn_right = keys[K_d]  # D stays D (turn right)
+        else:
+            # For desktop, use direct QSDZ mapping
+            self.current_state.forward = keys[K_z]
+            self.current_state.backward = keys[K_s]
+            self.current_state.turn_left = keys[K_q]
+            self.current_state.turn_right = keys[K_d]
+            
+        self.current_state.boost_teleport = keys[K_SPACE]
+        
+        # Update system keys
+        self.current_state.escape = keys[K_ESCAPE]
+        
+        # Update mouse buttons
+        self.current_state.left_mouse = mouse_buttons[0]
+        self.current_state.right_mouse = mouse_buttons[2]
+        self.current_state.middle_mouse = mouse_buttons[1]
+        
+        # Process events for key releases and special handling
+        self.current_state.any_key_pressed = False
+        self.current_state.performance_toggle = False
+        self.current_state.quit_requested = False
+        
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                self.current_state.quit_requested = True
+            elif event.type == KEYUP:
+                if event.key == K_ESCAPE:
+                    self.current_state.quit_requested = True
+                elif event.key == K_p:
+                    self.current_state.performance_toggle = True
+                else:
+                    self.current_state.any_key_pressed = True
+    
+    def _copy_state(self, source, destination):
+        """Copy input state from source to destination."""
+        destination.forward = source.forward
+        destination.backward = source.backward
+        destination.turn_left = source.turn_left
+        destination.turn_right = source.turn_right
+        destination.boost_teleport = source.boost_teleport
+        destination.escape = source.escape
+        destination.performance_toggle = source.performance_toggle
+        destination.left_mouse = source.left_mouse
+        destination.right_mouse = source.right_mouse
+        destination.middle_mouse = source.middle_mouse
+        destination.any_key_pressed = source.any_key_pressed
+        destination.quit_requested = source.quit_requested
 
 class Game:
     """Main game class for Abyssal Gears: Depths of Iron and Steam."""
@@ -86,10 +186,12 @@ class Game:
                 self._create_default_background()
         else:
             self._create_default_background()
-        
-        # Game state
+          # Game state
         self.running = True
         self.game_started = False
+        
+        # Initialize input handler
+        self.input_handler = InputHandler()
         
         # Load font
         font_file = join(font_path, "blocky.ttf")
@@ -125,13 +227,18 @@ class Game:
         
         # Apply initial shadow settings to all objects
         self.shadow_manager.update_all(self.sun)
-        
-        # Setup text and UI elements - with proper positioning for different screen sizes
+          # Setup text and UI elements - with proper positioning for different screen sizes
         try:
             text_x = screen_width // 2 - 200
             text_y = screen_height // 4
             start_x = screen_width // 2 - 150
             start_y = screen_height // 3
+            
+            # Create control instructions based on platform
+            if self.is_web:
+                controls_text = "Controls: QSDZ to move (AZERTY layout), SPACE to boost/teleport"
+            else:
+                controls_text = "Controls: QSDZ to move, SPACE to boost/teleport"
             
             if exists(font_file):
                 print(f"Font file found: {font_file}")
@@ -139,6 +246,7 @@ class Game:
                 self.small_font = pygame.font.Font(font_file, 24)
                 self.title_text = Text(font_file, 50, "Abyssal Gears: Depths of Iron and Steam", self.WHITE, text_x, text_y)
                 self.start_text = Text(font_file, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
+                self.controls_text = Text(font_file, 20, controls_text, self.WHITE, start_x - 50, start_y + 40)
             else:
                 print(f"Font file not found, using system font")
                 raise FileNotFoundError("Font file not found")
@@ -148,6 +256,7 @@ class Game:
             self.small_font = pygame.font.SysFont(None, 24)
             self.title_text = Text(None, 50, "Abyssal Gears: Depths of Iron and Steam", self.WHITE, text_x, text_y)
             self.start_text = Text(None, 25, "Press any key to dive into the depths", self.WHITE, start_x, start_y)
+            self.controls_text = Text(None, 20, controls_text, self.WHITE, start_x - 50, start_y + 40)
 
     def _create_dungeon_objects(self, image_path):
         """Create an underwater cave environment with walls, kelp, rocks and clams."""
@@ -315,11 +424,11 @@ class Game:
             
             # Create a surface for the semi-transparent light ray
             ray_surface = pygame.Surface((width, self.screen_height), pygame.SRCALPHA)
-            
-            # Fill with a gradient
+              # Fill with a gradient
             for ray_y in range(self.screen_height):
                 depth_factor = ray_y / self.screen_height
                 alpha = int(25 * (1 - depth_factor))  # Fade out as it goes deeper
+                
                 pygame.draw.line(
                     ray_surface,
                     (255, 255, 220, alpha),
@@ -331,28 +440,26 @@ class Game:
             
     def handle_events(self):
         """Process input events."""
-        self.keys = pygame.key.get_pressed()
+        # Update input handler - this processes all pygame events
+        self.input_handler.update()
         
-        for e in event.get():
-            if e.type == QUIT or (e.type == KEYUP and e.key == K_ESCAPE):
-                self.running = False
-            
-            # Start game on key press
-            if not self.game_started and e.type == KEYUP:
-                self.game_started = True
-                  # Game started key handling
-            if self.game_started and e.type == KEYUP:                # Cycle performance modes
-                if e.key == pygame.K_p:
-                    self.performance_mode = 0  # Always use most optimized performance mode
-                    print("Performance mode: High (best quality)")
+        # Check for quit
+        if self.input_handler.current_state.quit_requested:
+            self.running = False
+        
+        # Start game on any key press
+        if not self.game_started and self.input_handler.current_state.any_key_pressed:
+            self.game_started = True
+          # Game started key handling
+        if self.game_started and self.input_handler.current_state.performance_toggle:
+            self.performance_mode = 0  # Always use most optimized performance mode
+            print("Performance mode: High (best quality)")
+    
     def update(self):
         """Update game state."""
         if self.game_started:
-            # Get mouse button states
-            mouse_buttons = pygame.mouse.get_pressed()
-            
-            # Update the player entity first
-            self.player.update(self.keys, mouse_buttons=mouse_buttons)
+            # Update the player entity using input handler
+            self.player.update(self.input_handler.current_state)
             
             # Update each cannonball
             for cannonball in self.player_controller.cannonballs:
@@ -405,8 +512,7 @@ class Game:
         fps = int(self.clock.get_fps())
         fps_surface = self.small_font.render(f"FPS: {fps}", True, (255, 255, 255))
         camera_surface.blit(fps_surface, (10, 10))
-        
-        # Draw grid lines to show movement
+          # Draw grid lines to show movement
         self._draw_world_grid(camera_surface)
         
         if not self.game_started:
@@ -414,6 +520,7 @@ class Game:
             self.screen.blit(self.background, (0, 0))
             self.title_text.draw(self.screen)
             self.start_text.draw(self.screen)
+            self.controls_text.draw(self.screen)
         else:
             # Draw world objects with camera offset
             visible_objects = self._get_visible_objects()

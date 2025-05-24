@@ -1,4 +1,3 @@
-from pygame import K_z, K_q, K_s, K_d, K_SPACE, MOUSEBUTTONDOWN
 import random
 import math
 from core.bubble import Bubble
@@ -23,7 +22,8 @@ class PlayerController:
         self.boost_stamina_cost = 1.0
         self.teleport_stamina_cost = 30.0  # Cost for teleporting
         self.stamina_locked = False  # Added: prevents stamina use until fully regenerated
-          # Teleport properties
+        
+        # Teleport properties
         self.space_press_time = 0  # How long space has been pressed
         self.teleport_distance = 100  # Units to teleport
         self.max_teleport_hold = 45  # Max frames to hold for teleport vs boost (about 0.75 seconds at 60fps)
@@ -44,8 +44,7 @@ class PlayerController:
         self.max_tilt = 1.0  # Maximum tilt value
         self.tilt_speed = 0.2  # How fast the tilt changes
         self.layer_offset = 1  # Pixels to offset each layer during tilt
-        
-        # Bubble effect properties
+          # Bubble effect properties
         self.bubbles = []  # List of active bubbles
         self.bubble_spawn_timer = 0
         self.bubble_spawn_rate = 10  # Frames between bubble spawns when moving
@@ -56,24 +55,25 @@ class PlayerController:
         self.bubble_speed = 0.5  # How fast bubbles float up
         self.bubble_spread = 10  # How far bubbles can spread horizontally
     
-    def update(self, keys, *args, **kwargs):
-        """Update the entity based on key inputs.
+    def update(self, input_state, *args, **kwargs):
+        """Update the entity based on input state.
         
         Args:
-            keys: Dictionary of key states from pygame.key.get_pressed()
+            input_state: InputState object containing current input states
             *args: Additional arguments including mouse buttons
             **kwargs: Additional keyword arguments
         """
         if not self.entity:
             return
             
-        # Get mouse buttons if provided
+        # Get mouse buttons if provided (for backward compatibility)
         mouse_buttons = kwargs.get('mouse_buttons', [0, 0, 0])
-          # Update bubbles
+        
+        # Update bubbles
         self._update_bubbles()
 
         # Track space bar press duration and handle teleport/boost
-        if keys[K_SPACE]:
+        if input_state.boost_teleport:
             self.space_press_time += 1
             
             # Handle boost activation - activate immediately if holding space
@@ -94,11 +94,11 @@ class PlayerController:
                 not self.boost_cooldown):
                 # Determine teleport direction based on movement keys, default to forward
                 angle = 270  # Default to forward
-                if keys[K_s]:  # Backward
+                if input_state.backward:  # Backward
                     angle = 90
-                elif keys[K_q]:  # Left
+                elif input_state.turn_left:  # Left
                     angle = 180
-                elif keys[K_d]:  # Right
+                elif input_state.turn_right:  # Right
                     angle = 0
                 
                 # Execute teleport
@@ -121,19 +121,19 @@ class PlayerController:
         
         # Movement controls (ZQSD)
         # Z - Forward
-        if keys[K_z]:
+        if input_state.forward:
             self.entity.speed += self.entity.acceleration
         # S - Backward
-        elif keys[K_s]:
+        elif input_state.backward:
             self.entity.speed -= self.entity.acceleration
             
         # Handle rotation and tilt (Q/D for left/right)
-        if keys[K_q]:
+        if input_state.turn_left:
             # Update rotation
             self.entity.rotation = (self.entity.rotation - self.entity.rotation_speed) % 360
             # Add tilt effect when turning left
             self.tilt_amount = min(self.max_tilt, self.tilt_amount + self.tilt_speed)
-        elif keys[K_d]:
+        elif input_state.turn_right:
             # Update rotation
             self.entity.rotation = (self.entity.rotation + self.entity.rotation_speed) % 360
             # Add tilt effect when turning right
@@ -143,7 +143,7 @@ class PlayerController:
             if self.tilt_amount > 0:
                 self.tilt_amount = max(0, self.tilt_amount - self.tilt_speed)
             elif self.tilt_amount < 0:
-                self.tilt_amount = min(0, self.tilt_amount + self.tilt_speed)          # Boost handling is now managed in the space press duration section above
+                self.tilt_amount = min(0, self.tilt_amount + self.tilt_speed)# Boost handling is now managed in the space press duration section above
             
         # Regenerate stamina when not boosting
         if not self.boost_active and self.stamina < self.max_stamina:
@@ -169,10 +169,9 @@ class PlayerController:
         self.entity.speed = max(min(self.entity.speed, 
                                  normal_max_speed), 
                               -normal_max_speed * 0.6)
-        
-        # Handle weapon firing
+          # Handle weapon firing
         # Left mouse button - Fire left weapon
-        if mouse_buttons[0] and self.fire_cooldown_left <= 0:
+        if input_state.left_mouse and self.fire_cooldown_left <= 0:
             self.firing_left = True
             self.fire_cooldown_left = self.fire_rate
             self._fire_cannon(-90)  # Fire from left side (-90 degrees relative to sub)
@@ -180,7 +179,7 @@ class PlayerController:
             self.firing_left = False
             
         # Right mouse button - Fire right weapon
-        if mouse_buttons[2] and self.fire_cooldown_right <= 0:
+        if input_state.right_mouse and self.fire_cooldown_right <= 0:
             self.firing_right = True
             self.fire_cooldown_right = self.fire_rate
             self._fire_cannon(90)  # Fire from right side (90 degrees relative to sub)
@@ -363,8 +362,7 @@ class PlayerController:
             direction=self.entity.rotation + side_angle + 90,  # Add side angle and 90 for proper orientation
         )
         self.cannonballs.append(ball)
-        
-        # Create bubble effect at cannon position
+          # Create bubble effect at cannon position
         for _ in range(3):
             bubble = Bubble(
                 x=spawn_x,
@@ -375,7 +373,55 @@ class PlayerController:
                 angle=random.uniform(0, 360)  # Random directions for explosion effect
             )
             self.bubbles.append(bubble)
+    
     def _update_cannonballs(self):
         """Update and remove dead cannonballs."""
         # Update each cannonball and keep only the active ones
         self.cannonballs = [c for c in self.cannonballs if c.update()]
+
+        # Update previous boost state for next frame
+        self.previous_boost_state = self.boost_active
+    
+    def update_legacy(self, keys, *args, **kwargs):
+        """Legacy update method for backward compatibility.
+        
+        This method converts the old keys dictionary format to the new InputState format.
+        This can be removed once all calling code is updated.
+        
+        Args:
+            keys: Dictionary of key states from pygame.key.get_pressed()
+            *args: Additional arguments including mouse buttons
+            **kwargs: Additional keyword arguments
+        """
+        # Create a temporary InputState from the legacy keys
+        # We'll define a simple class here to avoid import issues
+        class TempInputState:
+            def __init__(self):
+                self.forward = False
+                self.backward = False
+                self.turn_left = False
+                self.turn_right = False
+                self.boost_teleport = False
+                self.left_mouse = False
+                self.right_mouse = False
+                self.middle_mouse = False
+        
+        input_state = TempInputState()
+        
+        # Convert pygame key constants to InputState attributes
+        from pygame import K_z, K_q, K_s, K_d, K_SPACE
+        
+        input_state.forward = keys.get(K_z, False)
+        input_state.backward = keys.get(K_s, False)
+        input_state.turn_left = keys.get(K_q, False)
+        input_state.turn_right = keys.get(K_d, False)
+        input_state.boost_teleport = keys.get(K_SPACE, False)
+        
+        # Handle mouse buttons
+        mouse_buttons = kwargs.get('mouse_buttons', [False, False, False])
+        input_state.left_mouse = mouse_buttons[0] if len(mouse_buttons) > 0 else False
+        input_state.right_mouse = mouse_buttons[2] if len(mouse_buttons) > 2 else False
+        input_state.middle_mouse = mouse_buttons[1] if len(mouse_buttons) > 1 else False
+        
+        # Call the new update method
+        self.update(input_state, *args, **kwargs)

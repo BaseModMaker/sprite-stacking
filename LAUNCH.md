@@ -21,4 +21,4 @@ Deploy your pygames code to GitHub Pages with just a push
 
 Note: Assuming you've the game in a separate folder
 
-`python3 -m pygbag space_invaders/`
+`python -m pygbag src`

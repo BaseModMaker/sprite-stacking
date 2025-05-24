@@ -313,11 +313,9 @@ class PlayerController:
         """
         if not self.entity:
             return
-            
-        # Calculate cannon position based on submarine's position and rotation
-        cannon_angle_rad = math.radians(self.entity.rotation + side_angle)
-        spawn_x = self.entity.x + self.cannon_offset * math.cos(cannon_angle_rad)
-        spawn_y = self.entity.y + self.cannon_offset * math.sin(cannon_angle_rad)
+              # Spawn cannonball from the center of the submarine
+        spawn_x = self.entity.x
+        spawn_y = self.entity.y
         
         # Create the cannonball (90 degree offset since sub's 0 degrees is up)
         ball = Cannonball(

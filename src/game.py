@@ -445,18 +445,13 @@ class Game:
                 # Draw background
                 pygame.draw.rect(camera_surface, (50, 50, 50), 
                                 (stamina_x, stamina_y, stamina_width, stamina_height))
-                
-                # Draw current stamina
+                  # Draw current stamina
                 current_width = int((self.player_controller.stamina / self.player_controller.max_stamina) * stamina_width)
-                if self.player_controller.boost_active:
-                    # Green when boosting
-                    stamina_color = (0, 255, 0)
-                elif self.player_controller.stamina < self.player_controller.max_stamina * 0.3:
-                    # Red when low
-                    stamina_color = (255, 50, 50)
+                # Red while stamina is locked (regenerating), blue otherwise
+                if self.player_controller.stamina_locked:
+                    stamina_color = (255, 50, 50)  # Red
                 else:
-                    # Blue normally
-                    stamina_color = (50, 150, 255)
+                    stamina_color = (50, 150, 255)  # Blue
                     
                 pygame.draw.rect(camera_surface, stamina_color, 
                                 (stamina_x, stamina_y, current_width, stamina_height))

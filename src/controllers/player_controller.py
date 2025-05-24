@@ -14,6 +14,7 @@ class PlayerController:
         self.stamina = self.max_stamina
         self.stamina_regen_rate = 0.5
         self.boost_stamina_cost = 1.0
+        self.stamina_locked = False  # Added: prevents stamina use until fully regenerated
         self.firing_left = False
         self.firing_right = False
         self.fire_cooldown_left = 0
@@ -65,20 +66,23 @@ class PlayerController:
                 self.tilt_amount = max(0, self.tilt_amount - self.tilt_speed)
             elif self.tilt_amount < 0:
                 self.tilt_amount = min(0, self.tilt_amount + self.tilt_speed)
-        
-        # Boost (Spacebar)
-        if keys[K_SPACE] and self.stamina > 0 and self.boost_cooldown <= 0:
+          # Boost (Spacebar)
+        if keys[K_SPACE] and not self.stamina_locked and self.stamina > 0 and self.boost_cooldown <= 0:
             self.boost_active = True
             self.stamina -= self.boost_stamina_cost
             if self.stamina <= 0:
                 self.boost_active = False
                 self.boost_cooldown = self.max_boost_cooldown
+                self.stamina_locked = True  # Lock stamina use when depleted
         else:
             self.boost_active = False
             
         # Regenerate stamina when not boosting
         if not self.boost_active and self.stamina < self.max_stamina:
             self.stamina = min(self.max_stamina, self.stamina + self.stamina_regen_rate)
+            # Unlock stamina when fully regenerated
+            if self.stamina >= self.max_stamina:
+                self.stamina_locked = False
             
         # Decrease boost cooldown
         if self.boost_cooldown > 0:
@@ -86,8 +90,8 @@ class PlayerController:
             
         # Apply boost effect if active
         if self.boost_active:
-            max_boost_speed = self.entity.max_speed * 1.5
-            self.entity.speed = min(self.entity.speed * 1.2, max_boost_speed)
+            max_boost_speed = self.entity.max_speed * 2.0
+            self.entity.speed = min(self.entity.speed * 1.8, max_boost_speed)
             
         # Cap speed
         normal_max_speed = self.entity.max_speed

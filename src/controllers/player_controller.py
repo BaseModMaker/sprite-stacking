@@ -12,11 +12,22 @@ class PlayerController:
         self.previous_boost_active = False  # Track previous frame's boost state
         self.boost_cooldown = 0
         self.max_boost_cooldown = 60  # Frames
+        
+        # Stamina properties
         self.max_stamina = 100
         self.stamina = self.max_stamina
         self.stamina_regen_rate = 0.5
         self.boost_stamina_cost = 1.0
+        self.teleport_stamina_cost = 30.0  # Cost for teleporting
         self.stamina_locked = False  # Added: prevents stamina use until fully regenerated
+        
+        # Teleport properties
+        self.space_press_time = 0  # How long space has been pressed
+        self.teleport_distance = 100  # Units to teleport
+        self.max_teleport_hold = 20  # Max frames to hold for teleport vs boost
+        self.is_teleporting = False  # Track if we're in teleport state
+        
+        # Combat properties
         self.firing_left = False
         self.firing_right = False
         self.fire_cooldown_left = 0
@@ -56,6 +67,45 @@ class PlayerController:
         
         # Update bubbles
         self._update_bubbles()
+          # Track space bar press duration and handle teleport/boost
+        if keys[K_SPACE]:
+            if not self.stamina_locked and self.stamina > 0 and self.boost_cooldown <= 0:
+                self.space_press_time += 1
+                
+                # Switch to boost mode if held long enough
+                if self.space_press_time > self.max_teleport_hold:
+                    self.is_teleporting = False
+                    self.boost_active = True
+                    self.stamina -= self.boost_stamina_cost
+                    if self.stamina <= 0:
+                        self.boost_active = False
+                        self.boost_cooldown = self.max_boost_cooldown
+                        self.stamina_locked = True
+            else:
+                self.boost_active = False
+        else:
+            # Handle teleport on space release if it was a short press
+            if self.space_press_time > 0 and self.space_press_time <= self.max_teleport_hold:
+                # Only teleport if we have enough stamina
+                if self.stamina >= self.teleport_stamina_cost:
+                    # Determine teleport direction based on movement keys, default to forward
+                    angle = 270  # Default to forward
+                    if keys[K_s]:  # Backward
+                        angle = 90
+                    elif keys[K_q]:  # Left
+                        angle = 180
+                    elif keys[K_d]:  # Right
+                        angle = 0
+                    
+                    # Execute teleport and consume stamina
+                    self.teleport_polar(angle, self.teleport_distance)
+                    self.stamina -= self.teleport_stamina_cost
+                    if self.stamina <= 0:
+                        self.stamina_locked = True
+            
+            # Reset teleport/boost state
+            self.space_press_time = 0
+            self.boost_active = False
         
         # Movement controls (ZQSD)
         # Z - Forward
@@ -146,7 +196,9 @@ class PlayerController:
             
         # Update previous boost state for next frame
         self.previous_boost_active = self.boost_active
-        
+          # Update previous boost state for next frame
+        self.previous_boost_active = self.boost_active
+    
     def boost_just_started(self):
         """Check if boost just started this frame.
         
@@ -195,3 +247,26 @@ class PlayerController:
                 self._spawn_bubble()
                 # Set next spawn time based on boost state
                 self.bubble_spawn_timer = self.boost_bubble_rate if self.boost_active else self.bubble_spawn_rate
+
+    def teleport_polar(self, angle, distance):
+        """Teleport the submarine using polar coordinates relative to its current position and rotation.
+        
+        Args:
+            angle (float): Angle in degrees relative to submarine's front (0 = front, 180 = back)
+            distance (float): Distance to teleport in units
+        """
+        if not self.entity:
+            return
+            
+        # Convert angle to world space by adding submarine's rotation
+        world_angle = self.entity.rotation + angle
+        # Convert to radians for math calculations
+        angle_rad = math.radians(world_angle)
+        
+        # Calculate new position using polar coordinates
+        new_x = self.entity.x + distance * math.cos(angle_rad)
+        new_y = self.entity.y + distance * math.sin(angle_rad)
+        
+        # Update submarine position
+        self.entity.x = new_x
+        self.entity.y = new_y

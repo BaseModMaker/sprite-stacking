@@ -5,12 +5,13 @@ from core.bubble import Bubble
 from core.cannonball import Cannonball
 
 class PlayerController:
-    """Controller for submarine player entities in Abyssal Gears."""
+    """Controller for submarine player entities in Abyssal Gears."""    
     def __init__(self):
         """Initialize a new submarine controller."""
         self.entity = None
         self.direction_offset = 180
         self.boost_active = False
+        self.camera = None  # Will be set by the game
         self.previous_boost_active = False  # Track previous frame's boost state
         self.boost_cooldown = 0
         self.max_boost_cooldown = 60  # Frames
@@ -209,24 +210,61 @@ class PlayerController:
         """
         return self.boost_active and not self.previous_boost_active
     
+    def set_camera(self, camera):
+        """Set the camera reference for coordinate transformations.
+        
+        Args:
+            camera: The game's camera instance
+        """
+        self.camera = camera
+
+    def _get_spawn_position(self, offset_distance=0, angle_offset=0):
+        """Get the spawn position for projectiles and bubbles relative to the submarine's center.
+        
+        Args:
+            offset_distance (float): Distance from center to spawn point
+            angle_offset (float): Angle offset from sub's rotation
+            
+        Returns:
+            tuple: (spawn_x, spawn_y) coordinates in world space
+        """
+        if not self.entity:
+            return (0, 0)
+            
+        # Calculate spawn point using polar coordinates
+        angle_rad = math.radians(self.entity.rotation + angle_offset)
+        spawn_x = self.entity.x + offset_distance * math.cos(angle_rad)
+        spawn_y = self.entity.y + offset_distance * math.sin(angle_rad)
+        
+        return spawn_x, spawn_y    
+    
+    def get_center_position(self):
+        """Get the submarine's center position (where the red dot appears).
+        
+        Returns:
+            tuple: (x, y) coordinates of the center in world space
+        """
+        if not self.camera:
+            return self.entity.x, self.entity.y
+            
+        # Get the screen center (where red dot is drawn)
+        screen_x = self.camera.width // 2
+        screen_y = self.camera.height // 2
+        
+        # Convert to world coordinates
+        return self.camera.screen_to_world(screen_x, screen_y)
+
     def _spawn_bubble(self):
         """Spawn a new bubble behind the submarine."""
         if not self.entity:
-            return        # Convert polar coordinates to world position
-        # angle 0 = front of sub, 180 = back of sub
-        # angle_rad = math.radians(self.entity.rotation - 180)  # Adjust angle relative to sub's rotation
-        angle_rad = math.radians(self.entity.rotation + 90)  # Adjust angle relative to sub's rotation
-        spawn_distance = 50  # Distance from sub's center
-        
-        # Calculate spawn position using polar coordinates
-        spawn_x = self.entity.x + spawn_distance * math.cos(angle_rad)
-        spawn_y = self.entity.y + spawn_distance * math.sin(angle_rad)
+            return
+              # Get the exact position of the red dot
+        spawn_x, spawn_y = self.get_center_position()
         
         # Bubbles always move straight up
         move_angle = 90
         
         # Create new bubble
-        from core.bubble import Bubble
         bubble = Bubble(
             x=spawn_x,
             y=spawn_y,
@@ -236,7 +274,7 @@ class PlayerController:
             angle=move_angle + random.uniform(-20, 20)
         )
         self.bubbles.append(bubble)
-    
+
     def _update_bubbles(self):
         """Update and remove dead bubbles."""
         # Update each bubble and keep only the active ones
@@ -263,10 +301,10 @@ class PlayerController:
             
             # Random distance from center
             distance = random.uniform(20, 40)
-            
-            # Calculate bubble position
-            spawn_x = self.entity.x + distance * math.cos(angle_rad)
-            spawn_y = self.entity.y + distance * math.sin(angle_rad)
+              # Get center position and calculate bubble position relative to it
+            center_x, center_y = self.get_center_position()
+            spawn_x = center_x + distance * math.cos(angle_rad)
+            spawn_y = center_y + distance * math.sin(angle_rad)
             
             # Create bubble with outward movement
             from core.bubble import Bubble
@@ -314,14 +352,14 @@ class PlayerController:
         """
         if not self.entity:
             return
-              # Spawn cannonball from the center of the submarine
-        spawn_x = self.entity.x
-        spawn_y = self.entity.y
+              # Get the exact position of the red dot
+        spawn_x, spawn_y = self.get_center_position()
         
-        # Create the cannonball (90 degree offset since sub's 0 degrees is up)
+        # Create the cannonball
         ball = Cannonball(
             x=spawn_x,
-            y=spawn_y,            image_path="assets/images/cannonball-3x3x2.png",
+            y=spawn_y,            
+            image_path="assets/images/cannonball-3x3x2.png",
             direction=self.entity.rotation + side_angle + 90,  # Add side angle and 90 for proper orientation
         )
         self.cannonballs.append(ball)

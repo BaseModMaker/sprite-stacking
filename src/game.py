@@ -114,7 +114,8 @@ class Game:
         # Create and assign a player controller to the player
         self.player_controller = PlayerController()
         self.player.set_controller(self.player_controller)
-        
+        self.player_controller.set_camera(self.camera)  # Set camera reference
+
         # Register the cannonballs with the shadow manager
         self.shadow_manager.register_objects(self.player_controller.cannonballs)
         
@@ -482,9 +483,6 @@ class Game:
                 performance_mode=self.performance_mode,
                 rotation=270  # Always facing up on screen
             )
-
-            # Draw red center dot
-            pygame.draw.circle(camera_surface, (255, 0, 0), (center_x, center_y), 2)  # 2 pixel radius red dot
             
             # Draw stamina bar
             if hasattr(self.player_controller, 'stamina') and hasattr(self.player_controller, 'max_stamina'):
@@ -496,8 +494,10 @@ class Game:
                 # Draw background
                 pygame.draw.rect(camera_surface, (50, 50, 50), 
                                 (stamina_x, stamina_y, stamina_width, stamina_height))
-                  # Draw current stamina
+                
+                # Draw current stamina
                 current_width = int((self.player_controller.stamina / self.player_controller.max_stamina) * stamina_width)
+                
                 # Red while stamina is locked (regenerating), blue otherwise
                 if self.player_controller.stamina_locked:
                     stamina_color = (255, 50, 50)  # Red

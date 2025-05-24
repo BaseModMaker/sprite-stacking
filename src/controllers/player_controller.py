@@ -93,9 +93,12 @@ class PlayerController:
                     angle = 180
                 elif keys[K_d]:  # Right
                     angle = 0
-                    
+                
                 # Execute teleport
                 self.teleport_polar(angle, self.teleport_distance)
+                
+                # Create bubble burst at end position
+                self._create_teleport_bubbles()
                 
                 # Consume stamina and lock if we don't have enough
                 if self.stamina >= self.teleport_stamina_cost:
@@ -240,6 +243,36 @@ class PlayerController:
                 # Set next spawn time based on boost state
                 self.bubble_spawn_timer = self.boost_bubble_rate if self.boost_active else self.bubble_spawn_rate
 
+    def _create_teleport_bubbles(self):
+        """Create a burst of bubbles in all directions for teleport effect."""
+        if not self.entity:
+            return
+
+        num_bubbles = 16  # Number of bubbles in the burst
+        for i in range(num_bubbles):
+            # Calculate angle for even distribution around the circle
+            angle = (i * 360 / num_bubbles) + random.uniform(-10, 10)
+            angle_rad = math.radians(angle)
+            
+            # Random distance from center
+            distance = random.uniform(20, 40)
+            
+            # Calculate bubble position
+            spawn_x = self.entity.x + distance * math.cos(angle_rad)
+            spawn_y = self.entity.y + distance * math.sin(angle_rad)
+            
+            # Create bubble with outward movement
+            from core.bubble import Bubble
+            bubble = Bubble(
+                x=spawn_x,
+                y=spawn_y,
+                size=random.randint(2, 6),  # Slightly larger bubbles for effect
+                lifetime=30,  # Shorter lifetime for the effect
+                speed=random.uniform(1.0, 2.0),  # Faster speed for burst effect
+                angle=angle  # Move in the direction they're spawned
+            )
+            self.bubbles.append(bubble)
+
     def teleport_polar(self, angle, distance):
         """Teleport the submarine using polar coordinates relative to its current position and rotation.
         
@@ -262,3 +295,6 @@ class PlayerController:
         # Update submarine position
         self.entity.x = new_x
         self.entity.y = new_y
+        
+        # Create teleportation bubble effect
+        self._create_teleport_bubbles()

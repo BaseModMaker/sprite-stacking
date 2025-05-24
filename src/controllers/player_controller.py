@@ -44,7 +44,8 @@ class PlayerController:
         self.max_tilt = 1.0  # Maximum tilt value
         self.tilt_speed = 0.2  # How fast the tilt changes
         self.layer_offset = 1  # Pixels to offset each layer during tilt
-          # Bubble effect properties
+        
+        # Bubble effect properties
         self.bubbles = []  # List of active bubbles
         self.bubble_spawn_timer = 0
         self.bubble_spawn_rate = 10  # Frames between bubble spawns when moving
@@ -169,12 +170,13 @@ class PlayerController:
         self.entity.speed = max(min(self.entity.speed, 
                                  normal_max_speed), 
                               -normal_max_speed * 0.6)
-          # Handle weapon firing
+        
+        # Handle weapon firing
         # Left mouse button - Fire left weapon
         if input_state.left_mouse and self.fire_cooldown_left <= 0:
             self.firing_left = True
             self.fire_cooldown_left = self.fire_rate
-            self._fire_cannon(-90)  # Fire from left side (-90 degrees relative to sub)
+            self._fire_cannon(90)  # Fire from left side
         else:
             self.firing_left = False
             
@@ -182,7 +184,7 @@ class PlayerController:
         if input_state.right_mouse and self.fire_cooldown_right <= 0:
             self.firing_right = True
             self.fire_cooldown_right = self.fire_rate
-            self._fire_cannon(90)  # Fire from right side (90 degrees relative to sub)
+            self._fire_cannon(-90)  # Fire from right side
         else:
             self.firing_right = False
             

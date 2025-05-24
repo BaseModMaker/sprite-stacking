@@ -146,10 +146,9 @@ class Game:
         """Create an underwater cave environment with walls, kelp, rocks and clams."""
         self.world_objects = []
         self.wall_objects = []  # Separate list for wall objects to handle collisions
-        
-        # Cave dimensions - reduced for better performance
-        self.cave_width = 1600
-        self.cave_height = 1600
+          # Cave dimensions - 2x larger cave
+        self.cave_width = 3200
+        self.cave_height = 3200
         self.wall_thickness = 80
         
         # Load image paths

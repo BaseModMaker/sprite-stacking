@@ -5,9 +5,8 @@ from .spritestack import SpriteStack
 class GameObject(sprite.Sprite):
     """Base class for all game objects."""
     Scale = 2.0  # Default scale for all game objects
-    
     def __init__(self, x=0, y=0, image_path=None, num_layers=8, layer_offset=0.5, width=32, height=32, 
-                 outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1):
+                 outline_enabled=False, outline_color=(0, 0, 0), outline_thickness=1, outline_offset=1, shadow_enabled=True):
         """Initialize a game object.
         
         Args:
@@ -21,11 +20,11 @@ class GameObject(sprite.Sprite):
             outline_enabled (bool): Whether to draw an outline around the object
             outline_color (tuple): RGB color tuple for the outline
             outline_thickness (int): Thickness of the outline in pixels
+            shadow_enabled (bool): Whether to draw shadows for this object
         """
         sprite.Sprite.__init__(self)
         self.x = x
         self.y = y
-        
         # Create sprite stack for rendering
         self.sprite_stack = SpriteStack(
             image_path=image_path, 
@@ -39,6 +38,9 @@ class GameObject(sprite.Sprite):
             outline_offset=outline_offset
         )
         
+        # Set shadow state
+        self.shadow_enabled = shadow_enabled
+        
         # Set basic sprite properties for collision detection
         self.width = self.sprite_stack.width * self.Scale
         self.height = self.sprite_stack.height * self.Scale
@@ -49,12 +51,11 @@ class GameObject(sprite.Sprite):
         """Update the game object state.
         
         This method should be overridden by subclasses.
-        """
-        # Update rectangle position
+        """        # Update rectangle position
         if self.rect:
             self.rect.x = self.x - self.width//2
             self.rect.y = self.y - self.height//2
-    
+            
     def draw(self, surface, draw_shadow=True, performance_mode=0):
         """Draw the game object on the given surface.
         
@@ -64,7 +65,8 @@ class GameObject(sprite.Sprite):
             performance_mode (int): 0=Low, 1=Medium, 2=High quality rendering
         """
         # Draw using sprite stack, passing along the performance mode
-        self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow, performance_mode)
+        self.sprite_stack.draw(surface, self.x, self.y, 0, draw_shadow and self.shadow_enabled, performance_mode)
+        
     def draw_at_position(self, surface, screen_x, screen_y, draw_shadow=True, performance_mode=0, rotation=None):
         """Draw the game object on the given surface at the specified screen position.
         
@@ -87,14 +89,14 @@ class GameObject(sprite.Sprite):
         if hasattr(self, 'controller') and self.controller:
             if hasattr(self.controller, 'tilt_amount'):
                 tilt_amount = self.controller.tilt_amount
-            
+        
         # Draw using sprite stack at the specified position
         self.sprite_stack.draw(
-            surface, 
-            screen_x, 
-            screen_y, 
+            surface,
+            screen_x,
+            screen_y,
             actual_rotation,  # Pass the actual rotation angle
-            draw_shadow, 
+            draw_shadow and self.shadow_enabled,  # Only draw shadow if enabled
             performance_mode,
             tilt_amount=tilt_amount
         )

@@ -1,6 +1,8 @@
 from pygame import K_z, K_q, K_s, K_d, K_SPACE, MOUSEBUTTONDOWN
 import random
 import math
+from core.bubble import Bubble
+from core.cannonball import Cannonball
 
 class PlayerController:
     """Controller for submarine player entities in Abyssal Gears."""
@@ -32,6 +34,9 @@ class PlayerController:
         self.fire_cooldown_left = 0
         self.fire_cooldown_right = 0
         self.fire_rate = 15  # Frames between shots
+        self.cannonball_speed = 8.0  # Speed of fired cannonballs
+        self.cannonballs = []  # List of active cannonballs
+        self.cannon_offset = 30  # Distance cannons are from center of sub
         
         # Tilt effect properties
         self.tilt_amount = 0  # Current tilt (-1 for left, 1 for right)
@@ -168,8 +173,7 @@ class PlayerController:
         if mouse_buttons[0] and self.fire_cooldown_left <= 0:
             self.firing_left = True
             self.fire_cooldown_left = self.fire_rate
-            # Logic for firing left weapon would go here
-            print("Firing left weapon")
+            self._fire_cannon(-90)  # Fire from left side (-90 degrees relative to sub)
         else:
             self.firing_left = False
             
@@ -177,8 +181,7 @@ class PlayerController:
         if mouse_buttons[2] and self.fire_cooldown_right <= 0:
             self.firing_right = True
             self.fire_cooldown_right = self.fire_rate
-            # Logic for firing right weapon would go here
-            print("Firing right weapon")
+            self._fire_cannon(90)  # Fire from right side (90 degrees relative to sub)
         else:
             self.firing_right = False
             
@@ -189,6 +192,9 @@ class PlayerController:
         if self.fire_cooldown_right > 0:
             self.fire_cooldown_right -= 1
             
+        # Update cannonballs
+        self._update_cannonballs()
+        
         # Update previous boost state for next frame
         self.previous_boost_active = self.boost_active
           # Update previous boost state for next frame
@@ -298,3 +304,42 @@ class PlayerController:
         
         # Create teleportation bubble effect
         self._create_teleport_bubbles()
+    
+    def _fire_cannon(self, side_angle):
+        """Fire a cannonball from one of the submarine's cannons.
+        
+        Args:
+            side_angle (float): Angle offset from submarine's direction for cannon position (-90=left, 90=right)
+        """
+        if not self.entity:
+            return
+            
+        # Calculate cannon position based on submarine's position and rotation
+        cannon_angle_rad = math.radians(self.entity.rotation + side_angle)
+        spawn_x = self.entity.x + self.cannon_offset * math.cos(cannon_angle_rad)
+        spawn_y = self.entity.y + self.cannon_offset * math.sin(cannon_angle_rad)
+        
+        # Create the cannonball (90 degree offset since sub's 0 degrees is up)
+        ball = Cannonball(
+            x=spawn_x,
+            y=spawn_y,            image_path="assets/images/cannonball-3x3x2.png",
+            direction=self.entity.rotation + side_angle + 90,  # Add side angle and 90 for proper orientation
+        )
+        self.cannonballs.append(ball)
+        
+        # Create bubble effect at cannon position
+        for _ in range(3):
+            bubble = Bubble(
+                x=spawn_x,
+                y=spawn_y,
+                size=random.randint(3, 5),
+                lifetime=20,
+                speed=random.uniform(1.0, 2.0),
+                angle=random.uniform(0, 360)  # Random directions for explosion effect
+            )
+            self.bubbles.append(bubble)
+            
+    def _update_cannonballs(self):
+        """Update and remove dead cannonballs."""
+        # Update each cannonball and keep only the active ones
+        self.cannonballs = [c for c in self.cannonballs if c.update()]

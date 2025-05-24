@@ -95,7 +95,8 @@ class Game:
         
         # Create player submarine entity
         submarine_img_path = join(image_path, "yellow-submarine.png")
-        self.player = Entity(            x=0,
+        self.player = Entity(
+            x=0,
             y=0,
             image_path=submarine_img_path,
             num_layers=24,  # yellow-submarine.png is 32x16x24
@@ -109,9 +110,13 @@ class Game:
             rotation=270,  # Facing up
         )
         self.shadow_manager.register_object(self.player)
-          # Create and assign a player controller to the player
+        
+        # Create and assign a player controller to the player
         self.player_controller = PlayerController()
         self.player.set_controller(self.player_controller)
+        
+        # Register the cannonballs with the shadow manager
+        self.shadow_manager.register_objects(self.player_controller.cannonballs)
         
         # Remove car/tree/road logic and create dungeon objects
         self._create_dungeon_objects(image_path)
@@ -338,12 +343,18 @@ class Game:
                 if e.key == pygame.K_p:
                     self.performance_mode = 0  # Always use most optimized performance mode
                     print("Performance mode: High (best quality)")
-    
     def update(self):
         """Update game state."""
         if self.game_started:
+            # Get mouse button states
+            mouse_buttons = pygame.mouse.get_pressed()
+            
             # Update the player entity first
-            self.player.update(self.keys)
+            self.player.update(self.keys, mouse_buttons=mouse_buttons)
+            
+            # Update each cannonball
+            for cannonball in self.player_controller.cannonballs:
+                cannonball.update()
             
             # Check if boost just started - reset camera if so
             if self.player_controller.boost_just_started() and self.camera.has_manual_adjustment:
@@ -351,9 +362,10 @@ class Game:
             
             # Keep the player within the cave boundaries
             self._keep_player_in_cave()
-              # Update camera to follow player, passing the player's rotation
+            
+            # Update camera to follow player, passing the player's rotation
             self.camera.follow(self.player.x, self.player.y, self.player.rotation)
-    
+
     def _keep_player_in_cave(self):
         """Keep the player within the cave boundaries."""
         # Calculate the boundaries with a buffer to prevent going through walls
@@ -425,6 +437,18 @@ class Game:
                 
                 # Draw bubble
                 camera_surface.blit(bubble_surface, (screen_x - bubble.size, screen_y - bubble.size))
+            
+            # Draw cannonballs
+            for cannonball in self.player_controller.cannonballs:
+                screen_x, screen_y = self.camera.world_to_screen(cannonball.x, cannonball.y)
+                cannonball.draw_at_position(
+                    camera_surface,
+                    screen_x,
+                    screen_y,
+                    draw_shadow=self.shadow_manager.enabled,
+                    performance_mode=self.performance_mode,
+                    rotation=self.camera.rotation
+                )
             
             # Draw world objects
             for obj in visible_objects:

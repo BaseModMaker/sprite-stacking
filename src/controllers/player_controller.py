@@ -68,9 +68,10 @@ class PlayerController:
             
         # Get mouse buttons if provided
         mouse_buttons = kwargs.get('mouse_buttons', [0, 0, 0])
-        
-        # Update bubbles
-        self._update_bubbles()        # Track space bar press duration and handle teleport/boost
+          # Update bubbles
+        self._update_bubbles()
+
+        # Track space bar press duration and handle teleport/boost
         if keys[K_SPACE]:
             self.space_press_time += 1
             
@@ -247,8 +248,8 @@ class PlayerController:
             if self.bubble_spawn_timer <= 0:
                 self._spawn_bubble()
                 # Set next spawn time based on boost state
-                self.bubble_spawn_timer = self.boost_bubble_rate if self.boost_active else self.bubble_spawn_rate
-
+                self.bubble_spawn_timer = self.boost_bubble_rate if self.boost_active else self.bubble_spawn_rate    
+    
     def _create_teleport_bubbles(self):
         """Create a burst of bubbles in all directions for teleport effect."""
         if not self.entity:
@@ -336,7 +337,6 @@ class PlayerController:
                 angle=random.uniform(0, 360)  # Random directions for explosion effect
             )
             self.bubbles.append(bubble)
-            
     def _update_cannonballs(self):
         """Update and remove dead cannonballs."""
         # Update each cannonball and keep only the active ones

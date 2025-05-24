@@ -482,6 +482,9 @@ class Game:
                 performance_mode=self.performance_mode,
                 rotation=270  # Always facing up on screen
             )
+
+            # Draw red center dot
+            pygame.draw.circle(camera_surface, (255, 0, 0), (center_x, center_y), 2)  # 2 pixel radius red dot
             
             # Draw stamina bar
             if hasattr(self.player_controller, 'stamina') and hasattr(self.player_controller, 'max_stamina'):

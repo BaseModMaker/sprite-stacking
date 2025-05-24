@@ -36,21 +36,22 @@ class Game:
         pygame.init()
         self.clock = time.Clock()
         
-        # Set display mode - never use fullscreen on web
+        # Set display mode - use appropriate flags for web/desktop
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.is_fullscreen = fullscreen and not hasattr(sys, '_emscripten_info')
-        
-        # For debugging
         self.is_web = hasattr(sys, '_emscripten_info')
-        print(f"Running on web: {self.is_web}")
         
-        # Create the correct display for the platform
-        flags = 0
-        if self.is_fullscreen:
-            flags = pygame.FULLSCREEN
+        if self.is_web:
+            # For web, ensure we're using the browser window size
+            self.is_fullscreen = False
+            # The display mode is already set in main.py for web
+            self.screen = pygame.display.get_surface()
+        else:
+            # For desktop, respect the fullscreen parameter
+            self.is_fullscreen = fullscreen
+            flags = pygame.FULLSCREEN if fullscreen else 0
+            self.screen = display.set_mode((screen_width, screen_height), flags)
             
-        self.screen = display.set_mode((screen_width, screen_height), flags)
         self.caption = display.set_caption("Abyssal Gears: Depths of Iron and Steam")
         
         # Setup camera

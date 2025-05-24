@@ -23,10 +23,13 @@ async def main():
         base_dir = "."
         asset_dir = "assets"
         
-        # Use current browser window size for web
-        screen_info = pygame.display.Info()
-        screen_width = screen_info.current_w
-        screen_height = screen_info.current_h
+        # For web, get actual browser window dimensions using JavaScript
+        from platform import window
+        screen_width = window.innerWidth
+        screen_height = window.innerHeight
+        
+        # Set up the display to match browser window exactly
+        pygame.display.set_mode((screen_width, screen_height), pygame.RESIZABLE)
     else:
         # Local environment
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -53,7 +56,7 @@ async def main():
     game = Game(
         screen_width=screen_width, 
         screen_height=screen_height,
-        fullscreen=True,  # Enable fullscreen mode
+        fullscreen=False,  # Disable fullscreen mode
         asset_path=asset_dir,
         font_path=font_dir,
         image_path=image_dir,

@@ -369,10 +369,10 @@ class Game:
     
     def draw(self):
         """Draw everything to the screen."""
-        # Clear camera surface with deep blue underwater color
+        # Create camera surface
         camera_surface = self.camera.get_surface()
         
-        # Create a deep blue gradient background
+        # Create deep blue gradient background
         for y in range(self.camera.height):
             # Calculate gradient color - darker at the bottom, lighter at the top
             depth_factor = y / self.camera.height
@@ -403,6 +403,30 @@ class Game:
         else:
             # Draw world objects with camera offset
             visible_objects = self._get_visible_objects()
+            
+            # Draw bubbles
+            for bubble in self.player_controller.bubbles:
+                # Convert world coordinates to screen coordinates
+                screen_x, screen_y = self.camera.world_to_screen(bubble.x, bubble.y)
+                
+                # Skip if off screen
+                if (screen_x < -50 or screen_x > self.camera.width + 50 or
+                    screen_y < -50 or screen_y > self.camera.height + 50):
+                    continue
+                    
+                # Create bubble surface with transparency
+                bubble_surface = pygame.Surface((bubble.size * 2, bubble.size * 2), pygame.SRCALPHA)
+                pygame.draw.circle(
+                    bubble_surface,
+                    (255, 255, 255, bubble.alpha),
+                    (bubble.size, bubble.size),
+                    bubble.size
+                )
+                
+                # Draw bubble
+                camera_surface.blit(bubble_surface, (screen_x - bubble.size, screen_y - bubble.size))
+            
+            # Draw world objects
             for obj in visible_objects:
                 # Convert world coordinates to screen coordinates
                 screen_x, screen_y = self.camera.world_to_screen(obj.x, obj.y)

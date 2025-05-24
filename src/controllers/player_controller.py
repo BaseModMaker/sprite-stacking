@@ -1,4 +1,6 @@
 from pygame import K_z, K_q, K_s, K_d, K_SPACE, MOUSEBUTTONDOWN
+import random
+import math
 
 class PlayerController:
     """Controller for submarine player entities in Abyssal Gears."""
@@ -26,6 +28,17 @@ class PlayerController:
         self.max_tilt = 1.0  # Maximum tilt value
         self.tilt_speed = 0.2  # How fast the tilt changes
         self.layer_offset = 1  # Pixels to offset each layer during tilt
+        
+        # Bubble effect properties
+        self.bubbles = []  # List of active bubbles
+        self.bubble_spawn_timer = 0
+        self.bubble_spawn_rate = 10  # Frames between bubble spawns when moving
+        self.boost_bubble_rate = 5  # Faster spawn rate when boosting
+        self.bubble_lifetime = 60  # How long bubbles last in frames
+        self.min_bubble_size = 2
+        self.max_bubble_size = 4
+        self.bubble_speed = 0.5  # How fast bubbles float up
+        self.bubble_spread = 10  # How far bubbles can spread horizontally
     
     def update(self, keys, *args, **kwargs):
         """Update the entity based on key inputs.
@@ -37,9 +50,12 @@ class PlayerController:
         """
         if not self.entity:
             return
-        
+            
         # Get mouse buttons if provided
         mouse_buttons = kwargs.get('mouse_buttons', [0, 0, 0])
+        
+        # Update bubbles
+        self._update_bubbles()
         
         # Movement controls (ZQSD)
         # Z - Forward
@@ -130,7 +146,7 @@ class PlayerController:
             
         # Update previous boost state for next frame
         self.previous_boost_active = self.boost_active
-    
+        
     def boost_just_started(self):
         """Check if boost just started this frame.
         
@@ -138,3 +154,44 @@ class PlayerController:
             bool: True if boost just started, False otherwise
         """
         return self.boost_active and not self.previous_boost_active
+    
+    def _spawn_bubble(self):
+        """Spawn a new bubble behind the submarine."""
+        if not self.entity:
+            return        # Convert polar coordinates to world position
+        # angle 0 = front of sub, 180 = back of sub
+        # angle_rad = math.radians(self.entity.rotation - 180)  # Adjust angle relative to sub's rotation
+        angle_rad = math.radians(self.entity.rotation + 90)  # Adjust angle relative to sub's rotation
+        spawn_distance = 50  # Distance from sub's center
+        
+        # Calculate spawn position using polar coordinates
+        spawn_x = self.entity.x + spawn_distance * math.cos(angle_rad)
+        spawn_y = self.entity.y + spawn_distance * math.sin(angle_rad)
+        
+        # Bubbles always move straight up
+        move_angle = 90
+        
+        # Create new bubble
+        from core.bubble import Bubble
+        bubble = Bubble(
+            x=spawn_x,
+            y=spawn_y,
+            size=random.randint(self.min_bubble_size, self.max_bubble_size),
+            lifetime=self.bubble_lifetime,
+            speed=self.bubble_speed * random.uniform(0.8, 1.2),
+            angle=move_angle + random.uniform(-20, 20)
+        )
+        self.bubbles.append(bubble)
+    
+    def _update_bubbles(self):
+        """Update and remove dead bubbles."""
+        # Update each bubble and keep only the active ones
+        self.bubbles = [b for b in self.bubbles if b.update()]
+        
+        # Spawn new bubbles if moving
+        if abs(self.entity.speed) > 0.1:
+            self.bubble_spawn_timer -= 1
+            if self.bubble_spawn_timer <= 0:
+                self._spawn_bubble()
+                # Set next spawn time based on boost state
+                self.bubble_spawn_timer = self.boost_bubble_rate if self.boost_active else self.bubble_spawn_rate

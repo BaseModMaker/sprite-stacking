@@ -140,6 +140,9 @@ class Game:
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.is_web = hasattr(sys, '_emscripten_info')
+
+        # draw shadows
+        self.draw_shadows = False 
         
         if self.is_web:
             # For web, ensure we're using the browser window size
@@ -211,6 +214,7 @@ class Game:
             outline_thickness=2,
             outline_offset=11,
             rotation=270,  # Facing up
+            shadow_enabled=self.draw_shadows,
         )
         self.shadow_manager.register_object(self.player)
         
@@ -330,6 +334,7 @@ class Game:
                         outline_color=outline_color,
                         outline_thickness=outline_thickness,
                         outline_offset=outline_offset,
+                        shadow_enabled=self.draw_shadows,
                     )
                     self.world_objects.append(obj)
                     break
@@ -512,8 +517,6 @@ class Game:
         fps = int(self.clock.get_fps())
         fps_surface = self.small_font.render(f"FPS: {fps}", True, (255, 255, 255))
         camera_surface.blit(fps_surface, (10, 10))
-          # Draw grid lines to show movement
-        self._draw_world_grid(camera_surface)
         
         if not self.game_started:
             # Draw menu screen directly to main screen
@@ -628,37 +631,7 @@ class Game:
         
         # Update the display
         display.update()
-    
-    def _draw_world_grid(self, surface):
-        """Draw subtle underwater grid lines to help with depth perception."""
-        # Calculate grid lines based on camera position
-        grid_size = 200  # Distance between grid lines
-        grid_color = (40, 70, 90, 100)  # Subtle underwater grid color with transparency
-        
-        # Calculate the range of grid lines to draw
-        half_width = self.camera.width // 2
-        half_height = self.camera.height // 2
-        
-        # Calculate the offset from grid alignment
-        offset_x = self.camera.x % grid_size
-        offset_y = self.camera.y % grid_size
-        
-        # Create a surface with alpha for semi-transparent grid lines
-        grid_surface = pygame.Surface((self.camera.width, self.camera.height), pygame.SRCALPHA)
-        
-        # Draw vertical grid lines
-        for x in range(-half_width - int(offset_x), half_width - int(offset_x) + grid_size, grid_size):
-            screen_x = x + half_width
-            pygame.draw.line(grid_surface, grid_color, (screen_x, 0), (screen_x, self.camera.height), 1)
-            
-        # Draw horizontal grid lines
-        for y in range(-half_height - int(offset_y), half_height - int(offset_y) + grid_size, grid_size):
-            screen_y = y + half_height
-            pygame.draw.line(grid_surface, grid_color, (0, screen_y), (self.camera.width, screen_y), 1)
-        
-        # Apply the grid surface
-        surface.blit(grid_surface, (0, 0))
-    
+
     def _get_visible_objects(self):
         """Get only objects that are currently visible on the screen."""
         visible_objects = []

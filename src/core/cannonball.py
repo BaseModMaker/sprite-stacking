@@ -12,17 +12,18 @@ class Cannonball(Entity):
             x (float): Starting X position
             y (float): Starting Y position
             image_path (str): Path to the cannonball sprite
-            direction (float): Direction in degrees
-            speed (float): Movement speed
+            direction (float): Direction in degrees            speed (float): Movement speed
         """
         super().__init__(
             x=x, 
             y=y, 
             image_path=image_path,
-            num_layers=2,  # Cannonballs are smaller than submarines            width=3,  # Small projectile
+            num_layers=2,  # Cannonballs are smaller than submarines
+            width=3,  # Small projectile
             height=3,
             outline_enabled=False,
-            rotation=direction  # Use Entity's rotation instead of separate direction
+            rotation=direction,  # Use Entity's rotation instead of separate direction
+            shadow_enabled=False  # Cannonballs don't need shadows
         )
         
         # Set Entity's speed property

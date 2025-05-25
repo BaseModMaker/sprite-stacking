@@ -141,8 +141,9 @@ class Game:
         self.screen_height = screen_height
         self.is_web = hasattr(sys, '_emscripten_info')
 
-        # draw shadows
-        self.draw_shadows = False 
+        # draw shadows and outline settings
+        self.draw_shadows = False
+        self.draw_outline = False
         
         if self.is_web:
             # For web, ensure we're using the browser window size
@@ -209,7 +210,7 @@ class Game:
             width=32,
             height=16,
             entity_type="submarine",
-            outline_enabled=True,
+            outline_enabled=self.draw_outline,
             outline_color=(0, 0, 0),
             outline_thickness=2,
             outline_offset=11,
@@ -287,19 +288,19 @@ class Game:
         num_kelp = 5 
         min_spacing = 100        
         self._place_objects(kelp_img_path, num_kelp, min_spacing, placed_positions, 
-                          num_layers=18, width=6, height=6, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=8)
+                          num_layers=18, width=6, height=6, outline_enabled=self.draw_outline, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=8)
         
         # Add rocks rock-31x27x26
         num_rocks = 3
         min_rock_spacing = 120  # Larger spacing for rocks
         self._place_objects(rock_img_path, num_rocks, min_rock_spacing, placed_positions,
-                          num_layers=26, width=31, height=27, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=12)
+                          num_layers=26, width=31, height=27, outline_enabled=self.draw_outline, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=12)
         
         # Add clams clam-26x21x3
         num_clams = 5
         min_clam_spacing = 80
         self._place_objects(clam_img_path, num_clams, min_clam_spacing, placed_positions,
-                          num_layers=3, width=26, height=21, outline_enabled=True, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=1)
+                          num_layers=3, width=26, height=21, outline_enabled=self.draw_outline, outline_color=(0, 0, 0), outline_thickness=2, outline_offset=1)
         
         # Register all objects with the shadow manager
         self.shadow_manager.register_objects(self.world_objects)
